@@ -72,6 +72,7 @@ export default function DeveloperDashboard() {
   const [txMsg, setTxMsg] = useState("");
   const [tab, setTab] = useState<"submit" | "projects">("submit");
   const [mintPriceMap, setMintPriceMap] = useState<Record<string, string>>({});
+  const [pageLoading, setPageLoading] = useState(true);
 
   async function loadProjects() {
     const res = await fetch(`${apiBase}/projects`);
@@ -93,8 +94,7 @@ export default function DeveloperDashboard() {
   }
 
   useEffect(() => {
-    void loadProjects();
-    void refreshWallet();
+    Promise.all([loadProjects(), refreshWallet()]).finally(() => setPageLoading(false));
   }, []);
 
   useEffect(() => {
@@ -202,8 +202,14 @@ export default function DeveloperDashboard() {
           <p className="text-gray-500 text-sm mt-1">ส่งโครงการลดคาร์บอน วาง Stake และติดตามสถานะ</p>
         </div>
 
+        {pageLoading && (
+          <div className="flex items-center justify-center py-24">
+            <div className="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
+          </div>
+        )}
+
         {txMsg && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">{txMsg}</div>
+          <div className={`mb-4 p-3 rounded-lg text-sm border ${txMsg.startsWith("✅") || txMsg.startsWith("🌱") ? "bg-emerald-50 border-emerald-200 text-emerald-800" : txMsg.startsWith("❌") ? "bg-red-50 border-red-200 text-red-700" : "bg-blue-50 border-blue-200 text-blue-700"}`}>{txMsg}</div>
         )}
 
         {/* Tabs */}
@@ -223,7 +229,7 @@ export default function DeveloperDashboard() {
         </div>
 
         {/* Submit Tab */}
-        {tab === "submit" && (
+        {!pageLoading && tab === "submit" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">ข้อมูลโครงการ</h2>
@@ -314,7 +320,7 @@ export default function DeveloperDashboard() {
         )}
 
         {/* Projects Tab */}
-        {tab === "projects" && (
+        {!pageLoading && tab === "projects" && (
           <div className="space-y-4">
             {projects.length === 0 && (
               <div className="text-center py-16 text-gray-400">

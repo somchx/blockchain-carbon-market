@@ -201,7 +201,7 @@ export default function GovernancePortal() {
             {/* Voting Power Card */}
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-6">
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Voting Power</h2>
-              <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                 <div className="bg-purple-50 rounded-xl p-4 text-center">
                   <p className="text-xs text-purple-500 mb-1">CGOV Balance</p>
                   <p className="text-2xl font-bold text-purple-900">{govBalance}</p>

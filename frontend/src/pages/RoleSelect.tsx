@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
+import { getContractConfig } from "../lib/web3";
 
 const roles = [
   {
@@ -35,6 +36,7 @@ const roles = [
 
 export default function RoleSelect() {
   const navigate = useNavigate();
+  const config = getContractConfig();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-emerald-50 flex flex-col">
@@ -49,7 +51,7 @@ export default function RoleSelect() {
             </div>
           </div>
           <div className="flex gap-2 text-xs text-gray-400">
-            <span className="bg-gray-100 px-2 py-1 rounded">Hardhat Local</span>
+            <span className="bg-gray-100 px-2 py-1 rounded">{config.rpcLabel}</span>
             <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded">ERC-1155</span>
           </div>
         </div>

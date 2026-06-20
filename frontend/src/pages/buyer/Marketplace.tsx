@@ -47,6 +47,7 @@ export default function BuyerMarketplace() {
   const [tab, setTab] = useState<"market" | "portfolio">("market");
   const [retireAmount, setRetireAmount] = useState<Record<string, number>>({});
   const [certLinks, setCertLinks] = useState<Record<string, string>>({});
+  const [pageLoading, setPageLoading] = useState(true);
 
   async function loadData() {
     const res = await fetch(`${apiBase}/projects`);
@@ -103,7 +104,7 @@ export default function BuyerMarketplace() {
   }
 
   useEffect(() => {
-    void refreshAll();
+    refreshAll().finally(() => setPageLoading(false));
     if (!window.ethereum?.on) return;
     const h = () => void refreshAll();
     window.ethereum.on("accountsChanged", h);
@@ -197,8 +198,14 @@ export default function BuyerMarketplace() {
           )}
         </div>
 
+        {pageLoading && (
+          <div className="flex items-center justify-center py-24">
+            <div className="w-8 h-8 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+          </div>
+        )}
+
         {txMsg && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">{txMsg}</div>
+          <div className={`mb-4 p-3 rounded-lg text-sm border ${txMsg.startsWith("✅") ? "bg-emerald-50 border-emerald-200 text-emerald-800" : txMsg.startsWith("❌") ? "bg-red-50 border-red-200 text-red-700" : "bg-blue-50 border-blue-200 text-blue-700"}`}>{txMsg}</div>
         )}
 
         {/* Tabs */}
@@ -214,7 +221,7 @@ export default function BuyerMarketplace() {
         </div>
 
         {/* Marketplace */}
-        {tab === "market" && (
+        {!pageLoading && tab === "market" && (
           <>
             {!wallet && (
               <div className="text-center py-10 bg-white rounded-2xl border border-gray-200 text-gray-500">
@@ -306,7 +313,7 @@ export default function BuyerMarketplace() {
         )}
 
         {/* Portfolio */}
-        {tab === "portfolio" && (
+        {!pageLoading && tab === "portfolio" && (
           <div>
             {!wallet && (
               <div className="text-center py-10 bg-white rounded-2xl border border-gray-200 text-gray-500">

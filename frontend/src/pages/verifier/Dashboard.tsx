@@ -51,6 +51,7 @@ export default function VerifierDashboard() {
   const [txMsg, setTxMsg] = useState("");
   const [filter, setFilter] = useState<"all" | "pending" | "assessed">("all");
   const [evidenceMap, setEvidenceMap] = useState<Record<string, EvidenceFile[]>>({});
+  const [pageLoading, setPageLoading] = useState(true);
 
   const isAssessor = wallet && config.assessorAddress
     ? wallet.account.toLowerCase() === config.assessorAddress.toLowerCase()
@@ -88,8 +89,7 @@ export default function VerifierDashboard() {
   }
 
   useEffect(() => {
-    void loadProjects();
-    void refreshWallet();
+    Promise.all([loadProjects(), refreshWallet()]).finally(() => setPageLoading(false));
   }, []);
 
   useEffect(() => {
@@ -152,12 +152,19 @@ export default function VerifierDashboard() {
           )}
         </div>
 
-        {txMsg && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">{txMsg}</div>
+        {pageLoading && (
+          <div className="flex items-center justify-center py-24">
+            <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+          </div>
         )}
 
+        {txMsg && (
+          <div className={`mb-4 p-3 rounded-lg text-sm border ${txMsg.startsWith("✅") ? "bg-emerald-50 border-emerald-200 text-emerald-800" : txMsg.startsWith("❌") ? "bg-red-50 border-red-200 text-red-700" : "bg-blue-50 border-blue-200 text-blue-700"}`}>{txMsg}</div>
+        )}
+
+        {!pageLoading && (<>
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           {[
             { label: "Total Projects", value: projects.length, color: "text-gray-900" },
             { label: "Awaiting Review", value: projects.filter(p => !onChainData[p.id] || onChainData[p.id].status === 0).length, color: "text-amber-600" },
@@ -182,7 +189,7 @@ export default function VerifierDashboard() {
 
         {/* Project List */}
         <div className="space-y-3">
-          {displayed.length === 0 && (
+          {displayed.length === 0 && !pageLoading && (
             <div className="text-center py-16 text-gray-400">
               <p className="text-4xl mb-3">🔍</p>
               <p className="text-lg font-medium">ไม่มีโครงการ</p>
@@ -324,6 +331,7 @@ export default function VerifierDashboard() {
             );
           })}
         </div>
+        </>)}
       </div>
     </div>
   );

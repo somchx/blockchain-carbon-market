@@ -36,6 +36,8 @@ export default function WalletBar({ role }: Props) {
   const [wallet, setWallet] = useState<WalletState | null>(null);
   const [balance, setBalance] = useState("—");
   const [msg, setMsg] = useState("");
+  const [connecting, setConnecting] = useState(false);
+  const [switching, setSwitching] = useState(false);
 
   async function refresh() {
     const w = await getConnectedWallet();
@@ -63,6 +65,7 @@ export default function WalletBar({ role }: Props) {
   }, []);
 
   async function connect() {
+    setConnecting(true);
     try {
       const w = await connectWallet();
       setWallet(w);
@@ -70,17 +73,23 @@ export default function WalletBar({ role }: Props) {
       setBalance(b.tokenBalance);
       setMsg("");
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Connection failed");
+      const err = e instanceof Error ? e.message : "Connection failed";
+      setMsg(err.includes("rejected") ? "Connection cancelled" : err);
+    } finally {
+      setConnecting(false);
     }
   }
 
   async function switchNet() {
+    setSwitching(true);
     try {
       await switchToConfiguredNetwork();
       await refresh();
       setMsg(`Switched to ${config.rpcLabel}`);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Switch failed");
+    } finally {
+      setSwitching(false);
     }
   }
 
@@ -115,18 +124,20 @@ export default function WalletBar({ role }: Props) {
               {!chainOk && (
                 <button
                   onClick={switchNet}
-                  className="text-xs bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"
+                  disabled={switching}
+                  className="text-xs bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 disabled:opacity-60"
                 >
-                  Switch Network
+                  {switching ? "Switching..." : "Switch Network"}
                 </button>
               )}
             </>
           ) : (
             <button
               onClick={connect}
-              className="text-sm bg-emerald-600 text-white px-4 py-1.5 rounded-lg hover:bg-emerald-700 font-medium"
+              disabled={connecting}
+              className="text-sm bg-emerald-600 text-white px-4 py-1.5 rounded-lg hover:bg-emerald-700 font-medium disabled:opacity-60 min-w-[140px]"
             >
-              Connect MetaMask
+              {connecting ? "Connecting..." : "Connect MetaMask"}
             </button>
           )}
           <button
@@ -138,7 +149,7 @@ export default function WalletBar({ role }: Props) {
         </div>
       </div>
       {msg && (
-        <div className="bg-blue-50 text-blue-700 text-xs text-center py-1 px-4">{msg}</div>
+        <div className={`text-xs text-center py-1 px-4 ${msg.startsWith("Switched") ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{msg}</div>
       )}
     </header>
   );
