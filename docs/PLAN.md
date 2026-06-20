@@ -147,25 +147,26 @@ cat contracts/deployments/sepolia.frontend.env
 
 | Component | สถานะ | รายละเอียด |
 |---|---|---|
-| Smart Contract: `CarbonMarket.sol` | ✅ มีแล้ว | Submit, Stake, Mint, Buy, Challenge, Slash, Reward |
-| Smart Contract: `CarbonCreditToken.sol` | ✅ มีแล้ว | ERC-1155 Carbon Token (1 tokenId = 1 project, 1 unit = 1 credit) |
-| Smart Contract: `PlatformToken.sol` | ✅ มีแล้ว | ERC-20 Utility/Stablecoin |
-| Backend: Risk Engine | ✅ Real APIs | NASA POWER จริง (solar/precip) + OpenWeatherMap (รอ key activate) → riskScore |
-| Backend: REST API | ✅ มีแล้ว | `/api/projects/assess` (async), `/api/projects`, `/api/leaderboard`, evidence endpoints |
-| Frontend: Role-based UI | ✅ เสร็จแล้ว | React Router + Tailwind + 3 Dashboards แยก role |
-| Developer Dashboard | ✅ เสร็จแล้ว | Submit → Stake → **Mint & List** (status-aware, price input) |
-| Verifier Dashboard | ✅ เสร็จแล้ว | Pending list, Risk bar charts, Approve/Reject on-chain |
-| Buyer Marketplace | ✅ เสร็จแล้ว | Browse listings, Buy credits, Portfolio view |
-| Role Selector Landing | ✅ เสร็จแล้ว | หน้าแรก เลือก role + System flow diagram + Explorer link |
-| WalletBar Component | ✅ เสร็จแล้ว | Sticky header, wallet status, balance, Switch Role |
-| Evidence Upload → Pinata IPFS | ✅ เสร็จแล้ว | Drop zone UI → backend multer → Pinata API จริง → CID + URL |
-| IPFS Evidence ใน Verifier | ✅ เสร็จแล้ว | Verifier เห็นไฟล์ทุกอัน + ลิงก์ gateway.pinata.cloud |
-| Traceability Explorer | ✅ เสร็จแล้ว | `/explorer` — ค้นหา on-chain ID → timeline events + tx hash + IPFS evidence |
-| Real External APIs | ✅ เสร็จแล้ว | NASA POWER (ทำงาน 100%) + OpenWeatherMap (key pending ~2h) — fallback อัตโนมัติ |
-| Auth / Login System | ❌ ยังไม่มี | Login แยก role (ตอนนี้ใช้ role selector แทน) |
-| Retire Credits + NFT | ✅ เสร็จแล้ว | RetireCertificate.sol (ERC-721) + SVG cert pinned to Pinata IPFS + Buyer Portfolio UI |
-| PostgreSQL + Prisma | ✅ เสร็จแล้ว | Neon serverless PostgreSQL + Prisma ORM — data persist ถาวร |
-| Deploy | ✅ เสร็จแล้ว | Backend: https://blockchain-carbon-market.onrender.com · Frontend: https://blockchain-carbon-market-frontend.vercel.app |
+| Smart Contract: `CarbonMarket.sol` | ✅ มีแล้ว | Submit, Stake, Mint, Buy, Challenge, Slash, Reward, **retireCredits** |
+| Smart Contract: `CarbonCreditToken.sol` | ✅ มีแล้ว | ERC-1155 Carbon Token (1 tokenId = 1 project) |
+| Smart Contract: `PlatformToken.sol` | ✅ มีแล้ว | ERC-20 Utility Token |
+| Smart Contract: `RetireCertificate.sol` | ✅ เสร็จแล้ว | ERC-721 NFT — Mint เมื่อ Buyer retire credits |
+| Backend: Risk Engine | ✅ Real APIs | NASA POWER จริง + OpenWeatherMap จริง → riskScore ต่างกันตาม province/type |
+| Backend: REST API | ✅ มีแล้ว | assess, projects, leaderboard, evidence, **retire/certificate** |
+| Backend: Certificate Service | ✅ เสร็จแล้ว | สร้าง SVG cert → upload Pinata IPFS → คืน tokenUri |
+| Frontend: Role-based UI | ✅ เสร็จแล้ว | React + Vite + Tailwind + MetaMask + 3 Dashboards |
+| Developer Dashboard | ✅ เสร็จแล้ว | Submit → Stake → Mint & List (status-aware panel) |
+| Verifier Dashboard | ✅ เสร็จแล้ว | Pending list + Risk bar charts + IPFS evidence + Approve/Reject on-chain |
+| Buyer Marketplace | ✅ เสร็จแล้ว | Browse → Buy → Portfolio → **Retire & Get NFT Certificate** |
+| Traceability Explorer | ✅ เสร็จแล้ว | `/explorer` — search on-chain ID → full event timeline + IPFS evidence |
+| Evidence Upload → Pinata IPFS | ✅ เสร็จแล้ว | Drop zone → Pinata API → CID + IPFS URL |
+| PostgreSQL + Prisma | ✅ เสร็จแล้ว | Neon serverless PostgreSQL — data persist ถาวร |
+| Seed Data | ✅ เสร็จแล้ว | 5 โครงการไทยจริง (ดอนสัก/โคราช/ขอนแก่น/เชียงใหม่/ภูเก็ต) — risk จาก real API |
+| Deploy: Backend | ✅ Live | https://blockchain-carbon-market.onrender.com |
+| Deploy: Frontend | ✅ Live | https://blockchain-carbon-market-frontend.vercel.app |
+| Auth / Login System | ❌ ยังไม่มี | ตอนนี้ใช้ role selector + wallet address แทน |
+| Sepolia Testnet Deploy | ❌ ยังไม่มี | Contracts ยังอยู่บน Hardhat local — on-chain tx ต้องรัน node เอง |
+| DAO Governance | ❌ ยังไม่มี | GovernorDAO.sol + GovernanceToken.sol + voting UI |
 
 ---
 
@@ -929,5 +930,5 @@ pages/
 
 ---
 
-*อัปเดตล่าสุด: 2026-06-21 — ครบ Sprint 1–3: PostgreSQL ✅ · Deploy ✅ (Render + Vercel) · Retire NFT ✅ · Next = Sepolia deploy หรือ Seed Data*  
+*อัปเดตล่าสุด: 2026-06-21 — ครบ: PostgreSQL ✅ · Deploy ✅ · Retire NFT ✅ · Seed Data ✅ (5 โครงการ real API) · Next = Sepolia หรือ DAO*  
 *Architect: Claude Code (claude-sonnet-4-6)*
