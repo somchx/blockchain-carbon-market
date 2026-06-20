@@ -5,6 +5,7 @@ import VerifierDashboard from "./pages/verifier/Dashboard";
 import BuyerMarketplace from "./pages/buyer/Marketplace";
 import TraceabilityExplorer from "./pages/explorer/Traceability";
 import GovernancePortal from "./pages/dao/GovernancePortal";
+import AdminDashboard from "./pages/admin/Dashboard";
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
       <Route path="/buyer" element={<BuyerMarketplace />} />
       <Route path="/explorer" element={<TraceabilityExplorer />} />
       <Route path="/dao" element={<GovernancePortal />} />
+      <Route path="/admin" element={<AdminDashboard />} />
     </Routes>
   );
 }

@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { z } from "zod";
 import { generateCertificate } from "./certificateService.js";
+import { prisma } from "./db.js";
 import { uploadFileToIPFS } from "./ipfsService.js";
 import { assessProject } from "./riskEngine.js";
 import { getLeaderboard, getProject, listEvidence, listProjects, saveEvidence, saveProject } from "./store.js";
@@ -113,6 +114,21 @@ api.post("/retire/certificate", async (req, res) => {
     const msg = err instanceof Error ? err.message : "Certificate generation failed";
     res.status(502).json({ message: msg });
   }
+});
+
+api.get("/admin/stats", async (_req, res) => {
+  const [totalProjects, totalEvidence, riskBuckets] = await Promise.all([
+    prisma.carbonProject.count(),
+    prisma.evidenceFile.count(),
+    prisma.carbonProject.groupBy({
+      by: ["riskScore"],
+      _count: { riskScore: true },
+    }),
+  ]);
+  const low = riskBuckets.filter(r => r.riskScore < 35).reduce((s, r) => s + r._count.riskScore, 0);
+  const med = riskBuckets.filter(r => r.riskScore >= 35 && r.riskScore < 60).reduce((s, r) => s + r._count.riskScore, 0);
+  const high = riskBuckets.filter(r => r.riskScore >= 60).reduce((s, r) => s + r._count.riskScore, 0);
+  res.json({ totalProjects, totalEvidence, riskLow: low, riskMed: med, riskHigh: high });
 });
 
 api.post("/projects/assess", async (req, res) => {

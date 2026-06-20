@@ -142,6 +142,23 @@ export default function RoleSelect() {
           </Link>
         </div>
 
+        {/* Admin Dashboard link */}
+        <div className="mt-3 w-full max-w-5xl">
+          <Link
+            to="/admin"
+            className="flex items-center justify-between bg-white border border-gray-200 rounded-2xl px-6 py-4 shadow-sm hover:shadow-md hover:border-gray-400 transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⚙️</span>
+              <div>
+                <p className="font-semibold text-gray-900">Admin Dashboard</p>
+                <p className="text-sm text-gray-500">ภาพรวมระบบ — สถิติโครงการ, Risk Distribution, Trust Leaderboard, DAO Proposals</p>
+              </div>
+            </div>
+            <span className="text-gray-300 group-hover:text-gray-600 text-xl transition-colors">→</span>
+          </Link>
+        </div>
+
         {/* Flow diagram */}
         <div className="mt-6 bg-white rounded-2xl border border-gray-200 shadow-sm p-6 w-full max-w-5xl">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">System Flow</p>
