@@ -4,29 +4,31 @@ Prototype marketplace for carbon credit issuance and trading that combines:
 
 - `Blockchain` for immutable records and settlement
 - `DeFi` for risk-based staking, slashing, and rewards
-- `Machine Learning style risk scoring` for project assessment
-- `Mock multi-source validation` for pre-blockchain data integrity
+- `Rule-based risk scoring` informed by real climate signals
+- `Hybrid off-chain validation` with real NASA POWER, optional OpenWeather, and IPFS evidence
 
 ## Architecture
 
 - `contracts/`: Solidity contracts for staking, issuance, trading, challenge, slashing, and rewards
-- `backend/`: Express API for data fusion, mock IoT/government data, risk scoring, trust score, and demo orchestration
+- `backend/`: Express API for data fusion, risk scoring, trust score, IPFS uploads, certificate generation, and demo orchestration
 - `frontend/`: React dashboard for sellers, buyers, and reviewers
 
 ## Core flow
 
 1. Seller connects wallet and submits a carbon project.
-2. Backend aggregates `user input + mock IoT + mock government + historical data`.
+2. Backend aggregates `user input + climate signals + derived confidence scores`.
 3. Risk engine computes:
-   - `approvedReduction`
+   - `approvedCredits`
    - `riskScore`
    - `trustScore`
    - `requiredStake`
 4. Seller stakes platform tokens.
-5. Carbon credits are tokenized as ERC-1155 units and listed in the marketplace.
-6. Reviewers can challenge suspicious projects by bonding stake and voting.
-7. Successful fraud detection triggers `slashing`, `trust reduction`, and optional `credit burn`.
-8. Honest projects receive `reward` and trust boosts over time.
+5. Verifier/assessor publishes the on-chain assessment.
+6. Carbon credits are tokenized as ERC-1155 units and listed in the marketplace.
+7. Buyers purchase credits, can retire them, and receive an ERC-721 certificate.
+8. Reviewers can challenge suspicious projects by bonding stake and voting.
+9. Successful fraud detection triggers `slashing`, `trust reduction`, and optional `credit burn`.
+10. Honest projects can receive rewards and trust boosts.
 
 ## Stack
 
@@ -105,7 +107,8 @@ The frontend now supports MetaMask or any injected EVM wallet.
    - publish assessor risk results
    - approve and stake utility tokens
    - mint and list credits
-   - approve a purchase and buy one credit
+   - approve a purchase and buy credits
+   - retire credits and mint a certificate NFT
 
 Important:
 
@@ -115,6 +118,8 @@ Important:
 
 ## Notes
 
-- This prototype intentionally uses `mock data` instead of live IoT or satellite feeds.
+- The current prototype uses `real NASA POWER` climate data, `optional OpenWeatherMap`, and `manual project input`; it does not yet integrate full live IoT hardware, satellite NDVI, or government registries.
+- Evidence and retirement certificates are pinned to IPFS through Pinata.
 - The off-chain risk engine is transparent and deterministic for demo purposes.
-- The challenge process is decentralized at the reviewer layer, while ML assessment remains off-chain due to compute cost.
+- The challenge process is decentralized at the reviewer layer, while the assessment logic remains off-chain.
+- The current marketplace uses a platform utility token, not a production stablecoin rail.

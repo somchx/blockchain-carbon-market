@@ -174,12 +174,12 @@ cat contracts/deployments/sepolia.frontend.env
 
 ```
 1. Collect Data          2. Submit Data      3. Verify           4. Mint Credit
-   IoT / Manual  ──────►  + Stake      ──►  (Oracle/DAO)  ──►  (Token)
-                          [Developer]        [Verifier]          [System Auto]
+   Climate / Manual ───►  + Stake      ──►  (Assessor/UI) ───►  (Token)
+                          [Developer]        [Verifier]          [Developer]
                               │                  │                    │
                               ▼                  ▼                    ▼
-5. Trade (DEX)          6. Settle           7. Reputation Update & Reward/Slash
-   Marketplace     ──►  (Stablecoin)  ──►  Trust Score + Event Log
+5. Trade (Marketplace)  6. Settle           7. Reputation Update & Reward/Slash
+   Fixed-price UI  ──►  (Utility Token) ─►  Trust Score + Event Log
    [Buyer]              [Smart Contract]    [On-chain]
 ```
 
@@ -187,32 +187,32 @@ cat contracts/deployments/sepolia.frontend.env
 
 | ขั้นตอน | Actor | On-chain | Off-chain |
 |---|---|---|---|
-| **1. Collect Data** | Project Developer | ❌ | ✅ IoT Sensor API + Satellite API + Government API + Manual form |
+| **1. Collect Data** | Project Developer | ❌ | ✅ NASA POWER + OpenWeatherMap (ถ้ามี key) + Manual form |
 | **2. Submit + Stake** | Project Developer | ✅ `submitProject()` + `depositStake()` | ✅ Risk Engine → requiredStake |
-| **3. Verify** | Verifier/Oracle | ✅ `publishAssessment()` | ✅ Verifier Dashboard → Approve/Reject |
-| **4. Mint Token** | System (Auto) | ✅ `mintAndList()` — ERC-1155 | ✅ บันทึก tx hash + metadata |
-| **5. Trade** | Buyer | ✅ `purchaseCredits()` | ✅ Marketplace UI |
-| **6. Settle** | Smart Contract | ✅ Transfer Stablecoin + Token | - |
+| **3. Verify** | Verifier / Assessor | ✅ `assessProject()` | ✅ Verifier Dashboard → Approve/Reject |
+| **4. Mint Token** | Project Developer | ✅ `mintAndListCredits()` — ERC-1155 | ✅ บันทึก tx hash + metadata |
+| **5. Trade** | Buyer | ✅ `buyCredits()` | ✅ Marketplace UI |
+| **6. Settle** | Smart Contract | ✅ Transfer utility token + carbon token | - |
 | **7. Reputation** | System | ✅ trustScore on-chain | ✅ leaderboard off-chain |
 
 ---
 
-## Full Scope — ทุกอย่างทำจริงทั้งหมด
+## Current Scope — ของที่ทำจริงตอนนี้
 
 1. **Submit Project** — Form กรอกข้อมูลโครงการ + Risk Assessment จาก Real Data Sources
-2. **IoT Sensor Data** — ดึงข้อมูลจาก Real Sensor API (OpenWeatherMap / GISTDA / NASA POWER)
-3. **Satellite Data** — ดึง NDVI / land cover จาก Copernicus Sentinel หรือ NASA EARTHDATA
-4. **Government DB** — เชื่อม TGO API (อบก.) หรือ Carbon Market Registry จริง
+2. **Climate Data** — ดึงข้อมูลจริงจาก NASA POWER และ OpenWeatherMap เมื่อมี API key
+3. **Satellite / Registry Data** — ยังเป็น planned scope ยังไม่ได้เชื่อม Copernicus, GISTDA, TGO หรือ registry จริง
+4. **Government DB** — ยังไม่มี integration จริงใน code ตอนนี้
 5. **Evidence Upload** — อัปโหลดไฟล์ PDF/รูปภาพไปยัง IPFS จริง ผ่าน Pinata API
 6. **Stake Collateral** — Developer stake Platform Token บน Blockchain จริง
-7. **Verifier / Oracle** — Multi-sig Verifier หรือ Chainlink Oracle สำหรับ data feed
-8. **DAO Governance** — Governor contract สำหรับ vote เปลี่ยน parameters + approve Verifier
-9. **Mint Carbon Token** — Mint ERC-1155 หลัง Approve อัตโนมัติ
-10. **Marketplace** — List / Buy / Retire ด้วย Stablecoin ERC-20 (USDC บน Testnet)
-11. **Real Stablecoin** — ใช้ USDC จริงบน Sepolia Testnet หรือ deploy USDC-compatible token
+7. **Verifier / Oracle** — Verifier dashboard มีจริง และ Oracle อยู่ในโหมด demo/simulated fetch จาก NASA POWER
+8. **DAO Governance** — Governor contract สำหรับ vote เปลี่ยน parameters มีจริง
+9. **Mint Carbon Token** — Mint ERC-1155 หลัง Assessor approve และ seller เรียก mint เอง
+10. **Marketplace** — List / Buy / Retire ด้วย utility token ERC-20 ของระบบ
+11. **Real Stablecoin** — ยังไม่ได้ใช้ USDC จริงใน implementation ปัจจุบัน
 12. **Transaction Traceability** — ดู full journey ของ token บน blockchain
-13. **Trust Score** — คำนวณ on-chain + อัปเดตจาก real data signals
-14. **Mobile App** — Progressive Web App (PWA) ที่ใช้ได้บนมือถือ
+13. **Trust Score** — คำนวณจาก off-chain risk engine แล้วบันทึก/อัปเดตใน project state on-chain
+14. **Mobile App / PWA** — ยังไม่ได้ทำ PWA setup
 15. **Retire Certificate** — NFT ใบรับรองการ offset คาร์บอน (ERC-721)
 
 ---
@@ -825,26 +825,26 @@ pages/
 
 ---
 
-## Tech Stack สรุป (Full Real Implementation)
+## Tech Stack สรุป (Current Implementation)
 
 | Layer | Technology | สถานะ | เหตุผล |
 |---|---|---|---|
 | Frontend | React + Vite + TypeScript | ✅ มีแล้ว | เร็ว, ecosystem ดี |
 | PWA | Vite PWA Plugin + Service Worker | ❌ ต้องเพิ่ม | ใช้งานบนมือถือได้ |
-| Styling | Tailwind CSS + shadcn/ui | ❌ ต้องเพิ่ม | เร็ว, clean, accessible |
+| Styling | Tailwind CSS | ✅ มีแล้ว | ใช้ใน frontend ปัจจุบัน |
 | Blockchain | ethers.js v6 | ✅ มีแล้ว | — |
 | Wallet | MetaMask + WalletConnect | ⚠️ MetaMask มีแล้ว | WalletConnect = mobile support |
 | Backend | Express + TypeScript | ✅ มีแล้ว | — |
-| Database | **PostgreSQL + Prisma ORM** | ❌ ต้องเพิ่ม | แทน in-memory store |
+| Database | **PostgreSQL + Prisma ORM** | ✅ มีแล้ว | ใช้เก็บ projects / evidence / leaderboard |
 | Smart Contract | Solidity + Hardhat | ✅ มีแล้ว | — |
 | Testnet | Hardhat local + **Sepolia** + **Polygon Amoy** | ⚠️ Sepolia config มีแล้ว | ทดสอบหลาย chain |
 | **IPFS** | **Pinata API** (real IPFS pinning) | ✅ เสร็จแล้ว | Evidence upload จริง, CID verified |
-| **IoT Data** | **OpenWeatherMap API + NASA POWER API** | ❌ ต้องเพิ่ม | Real environmental data |
+| **Climate Data** | **OpenWeatherMap API + NASA POWER API** | ⚠️ บางส่วนมีแล้ว | NASA ใช้งานจริง, OpenWeather ขึ้นกับ key |
 | **Satellite Data** | **Copernicus Sentinel Hub API** หรือ **GISTDA** | ❌ ต้องเพิ่ม | NDVI + land cover จริง |
 | **Government Data** | **TGO API** (อบก.) หรือ Carbon Registry endpoint | ❌ ต้องเพิ่ม | Carbon quota + project status |
-| **DAO** | OpenZeppelin Governor + GovernanceToken | ❌ ต้องเพิ่ม | Decentralized governance |
+| **DAO** | OpenZeppelin Governor + GovernanceToken | ✅ มีแล้ว | Decentralized governance |
 | **Stablecoin** | USDC บน Testnet (Sepolia/Circle Faucet) หรือ deploy USDCTestnet.sol | ❌ ต้องเพิ่ม | แทน PlatformToken |
-| **Retire NFT** | ERC-721 RetireCertificate.sol | ❌ ต้องเพิ่ม | ใบรับรอง carbon offset |
+| **Retire NFT** | ERC-721 RetireCertificate.sol | ✅ มีแล้ว | ใบรับรอง carbon offset |
 | Auth | Wallet address + JWT session | ❌ ต้องเพิ่ม | Stateless session |
 
 ---
