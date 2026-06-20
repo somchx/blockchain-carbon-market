@@ -45,6 +45,7 @@ const EVENT_META: Record<string, { label: string; icon: string; color: ColorKey 
   ChallengeOpened:    { label: "Challenge Opened",         icon: "⚠️", color: "orange" },
   ChallengeFinalized: { label: "Challenge Finalized",      icon: "⚖️", color: "red" },
   RewardIssued:       { label: "Reward Issued",            icon: "🏆", color: "yellow" },
+  CreditsRetired:     { label: "Credits Retired (Offset)", icon: "🔥", color: "gray" },
 };
 
 const EVENT_NAMES = [
@@ -56,6 +57,7 @@ const EVENT_NAMES = [
   "ChallengeOpened",
   "ChallengeFinalized",
   "RewardIssued",
+  "CreditsRetired",
 ] as const;
 
 function shortAddr(addr: string) {
@@ -109,6 +111,12 @@ function parseDetails(name: string, args: readonly unknown[]): { key: string; va
       return [
         { key: "Reward Amount",       value: tcut(args[1] as bigint) },
         { key: "Updated Trust Score", value: String(Number(args[2] as bigint)) },
+      ];
+    case "CreditsRetired":
+      return [
+        { key: "Retiree",    value: shortAddr(args[1] as string) },
+        { key: "Amount",     value: `${Number(args[2] as bigint)} credits offset` },
+        { key: "NFT Cert #", value: String(Number(args[3] as bigint)) },
       ];
     default:
       return [];

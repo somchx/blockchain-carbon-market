@@ -8,6 +8,7 @@ export const carbonMarketAbi = [
   "function depositProjectStake(uint256 projectId, uint256 amount)",
   "function mintAndListCredits(uint256 projectId, uint256 pricePerCredit, string tokenUri)",
   "function buyCredits(uint256 projectId, uint256 amount)",
+  "function retireCredits(uint256 projectId, uint256 amount, string certTokenUri) returns (uint256)",
   "function projects(uint256) view returns (uint256 id, address seller, string metadataUri, string sourceDataHash, uint256 requestedCredits, uint256 approvedCredits, uint256 vintageYear, uint256 riskScore, uint256 trustScore, uint256 requiredStake, uint256 stakedAmount, uint256 availableCredits, uint256 pricePerCredit, uint8 status)",
   "event ProjectSubmitted(uint256 indexed projectId, address indexed seller, uint256 requestedCredits)",
   "event ProjectAssessed(uint256 indexed projectId, uint256 approvedCredits, uint256 riskScore, uint256 requiredStake)",
@@ -16,7 +17,15 @@ export const carbonMarketAbi = [
   "event CreditsPurchased(uint256 indexed projectId, address indexed buyer, uint256 amount, uint256 totalCost)",
   "event ChallengeOpened(uint256 indexed projectId, address indexed challenger, uint256 deadline)",
   "event ChallengeFinalized(uint256 indexed projectId, bool fraudConfirmed, uint256 slashedAmount)",
-  "event RewardIssued(uint256 indexed projectId, uint256 rewardAmount, uint256 updatedTrustScore)"
+  "event RewardIssued(uint256 indexed projectId, uint256 rewardAmount, uint256 updatedTrustScore)",
+  "event CreditsRetired(uint256 indexed projectId, address indexed retiree, uint256 amount, uint256 certTokenId)"
+] as const;
+
+export const retireCertificateAbi = [
+  "function balanceOf(address owner) view returns (uint256)",
+  "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)",
+  "function certs(uint256 tokenId) view returns (uint256 projectId, address retiree, uint256 creditsRetired, uint256 retiredAt, string tokenUri)",
+  "event CertificateMinted(uint256 indexed tokenId, uint256 indexed projectId, address indexed retiree, uint256 creditsRetired)"
 ] as const;
 
 export const erc20Abi = [

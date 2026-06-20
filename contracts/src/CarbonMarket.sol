@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "./CarbonCreditToken.sol";
+import "./RetireCertificate.sol";
 
 contract CarbonMarket is Ownable, ERC1155Holder {
     enum ProjectStatus {
@@ -51,6 +52,7 @@ contract CarbonMarket is Ownable, ERC1155Holder {
 
     IERC20 public immutable utilityToken;
     CarbonCreditToken public immutable carbonToken;
+    RetireCertificate public retireCertificate;
 
     uint256 public nextProjectId = 1;
     uint256 public reviewerBond = 100 ether;
@@ -70,6 +72,7 @@ contract CarbonMarket is Ownable, ERC1155Holder {
     event StakeDeposited(uint256 indexed projectId, address indexed seller, uint256 amount);
     event CreditsMinted(uint256 indexed projectId, uint256 amount, uint256 pricePerCredit);
     event CreditsPurchased(uint256 indexed projectId, address indexed buyer, uint256 amount, uint256 totalCost);
+    event CreditsRetired(uint256 indexed projectId, address indexed retiree, uint256 amount, uint256 certTokenId);
     event ReviewerRegistered(address indexed reviewer, uint256 amount);
     event ChallengeOpened(uint256 indexed projectId, address indexed challenger, uint256 deadline);
     event ChallengeVoted(uint256 indexed projectId, address indexed reviewer, bool fraudDetected);
@@ -102,6 +105,10 @@ contract CarbonMarket is Ownable, ERC1155Holder {
     modifier onlyAssessor() {
         if (msg.sender != assessor) revert Unauthorized();
         _;
+    }
+
+    function setRetireCertificate(address retireCertAddress) external onlyOwner {
+        retireCertificate = RetireCertificate(retireCertAddress);
     }
 
     function setAssessor(address assessorAddress) external onlyOwner {
@@ -327,5 +334,19 @@ contract CarbonMarket is Ownable, ERC1155Holder {
         project.trustScore += trustBoost;
 
         emit RewardIssued(projectId, rewardAmount, project.trustScore);
+    }
+
+    function retireCredits(
+        uint256 projectId,
+        uint256 amount,
+        string calldata certTokenUri
+    ) external returns (uint256 certTokenId) {
+        if (address(retireCertificate) == address(0)) revert InvalidState();
+        if (carbonToken.balanceOf(msg.sender, projectId) < amount) revert InsufficientInventory();
+
+        carbonToken.burn(msg.sender, projectId, amount);
+        certTokenId = retireCertificate.mintCertificate(msg.sender, projectId, amount, certTokenUri);
+
+        emit CreditsRetired(projectId, msg.sender, amount, certTokenId);
     }
 }

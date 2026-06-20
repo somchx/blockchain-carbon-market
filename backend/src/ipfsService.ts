@@ -49,3 +49,5 @@ export async function uploadFileToIPFS(
     fileSizeBytes: buffer.length,
   };
 }
+
+export const uploadRawToIPFS = uploadFileToIPFS;

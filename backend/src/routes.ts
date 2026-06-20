@@ -1,6 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { z } from "zod";
+import { generateCertificate } from "./certificateService.js";
 import { uploadFileToIPFS } from "./ipfsService.js";
 import { assessProject } from "./riskEngine.js";
 import { getLeaderboard, getProject, listEvidence, listProjects, saveEvidence, saveProject } from "./store.js";
@@ -86,6 +87,33 @@ api.post(
     }
   },
 );
+
+const certSchema = z.object({
+  buyerAddress: z.string().min(1),
+  projectId: z.number().int().positive(),
+  projectName: z.string().min(1),
+  province: z.string().min(1),
+  projectType: z.string().min(1),
+  vintageYear: z.number().int(),
+  creditsRetired: z.number().int().positive()
+});
+
+api.post("/retire/certificate", async (req, res) => {
+  const parsed = certSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: "Invalid payload", issues: parsed.error.flatten() });
+  }
+  try {
+    const result = await generateCertificate({
+      ...parsed.data,
+      issuedAt: new Date().toUTCString()
+    });
+    res.status(201).json(result);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Certificate generation failed";
+    res.status(502).json({ message: msg });
+  }
+});
 
 api.post("/projects/assess", async (req, res) => {
   const parsed = projectSchema.safeParse(req.body);

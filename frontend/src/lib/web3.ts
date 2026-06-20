@@ -1,5 +1,5 @@
 import { BrowserProvider, Contract, formatUnits } from "ethers";
-import { carbonCreditAbi, carbonMarketAbi, erc20Abi } from "./contracts";
+import { carbonCreditAbi, carbonMarketAbi, erc20Abi, retireCertificateAbi } from "./contracts";
 
 type InjectedProvider = {
   request: (args: { method: string; params?: unknown[] | Record<string, unknown> }) => Promise<unknown>;
@@ -23,6 +23,7 @@ export type ContractConfig = {
   carbonTokenAddress?: string;
   assessorAddress?: string;
   expectedSellerAddress?: string;
+  retireCertificateAddress?: string;
 };
 
 function requireAddress(value: string | undefined, label: string) {
@@ -42,7 +43,8 @@ export function getContractConfig(): ContractConfig {
     utilityTokenAddress: import.meta.env.VITE_UTILITY_TOKEN_ADDRESS,
     carbonTokenAddress: import.meta.env.VITE_CARBON_TOKEN_ADDRESS,
     assessorAddress: import.meta.env.VITE_ASSESSOR_ADDRESS,
-    expectedSellerAddress: import.meta.env.VITE_EXPECTED_SELLER_ADDRESS
+    expectedSellerAddress: import.meta.env.VITE_EXPECTED_SELLER_ADDRESS,
+    retireCertificateAddress: import.meta.env.VITE_RETIRE_CERTIFICATE_ADDRESS
   };
 }
 
@@ -136,12 +138,14 @@ export async function getContracts(provider: BrowserProvider) {
   const marketAddress = requireAddress(config.marketAddress, "VITE_MARKET_ADDRESS");
   const utilityTokenAddress = requireAddress(config.utilityTokenAddress, "VITE_UTILITY_TOKEN_ADDRESS");
   const carbonTokenAddress = requireAddress(config.carbonTokenAddress, "VITE_CARBON_TOKEN_ADDRESS");
+  const retireCertificateAddress = requireAddress(config.retireCertificateAddress, "VITE_RETIRE_CERTIFICATE_ADDRESS");
 
   return {
     config,
     market: new Contract(marketAddress, carbonMarketAbi, signer),
     utilityToken: new Contract(utilityTokenAddress, erc20Abi, signer),
-    carbonToken: new Contract(carbonTokenAddress, carbonCreditAbi, signer)
+    carbonToken: new Contract(carbonTokenAddress, carbonCreditAbi, signer),
+    retireCertificate: new Contract(retireCertificateAddress, retireCertificateAbi, signer)
   };
 }
 

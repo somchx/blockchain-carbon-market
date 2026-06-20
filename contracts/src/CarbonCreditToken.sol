@@ -30,6 +30,10 @@ contract CarbonCreditToken is ERC1155, Ownable {
         _burn(from, id, amount);
     }
 
+    function balanceOf(address account, uint256 id) public view override returns (uint256) {
+        return super.balanceOf(account, id);
+    }
+
     function uri(uint256 id) public view override returns (string memory) {
         return _uris[id];
     }

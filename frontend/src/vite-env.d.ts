@@ -11,6 +11,7 @@ interface ImportMetaEnv {
   readonly VITE_CARBON_TOKEN_ADDRESS?: string;
   readonly VITE_ASSESSOR_ADDRESS?: string;
   readonly VITE_EXPECTED_SELLER_ADDRESS?: string;
+  readonly VITE_RETIRE_CERTIFICATE_ADDRESS?: string;
 }
 
 interface ImportMeta {

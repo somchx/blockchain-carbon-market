@@ -45,6 +45,8 @@ export default function BuyerMarketplace() {
   const [txMsg, setTxMsg] = useState("");
   const [portfolio, setPortfolio] = useState<Record<number, number>>({});
   const [tab, setTab] = useState<"market" | "portfolio">("market");
+  const [retireAmount, setRetireAmount] = useState<Record<string, number>>({});
+  const [certLinks, setCertLinks] = useState<Record<string, string>>({});
 
   async function loadData() {
     const res = await fetch(`${apiBase}/projects`);
@@ -140,6 +142,38 @@ export default function BuyerMarketplace() {
     const tx = await market.buyCredits(item.onChain.id, amount);
     await tx.wait();
     setTxMsg(`✅ Bought ${amount} Carbon Credits from "${item.local.input.projectName}"!`);
+  }
+
+  async function retireCredits(onChainId: number, amount: number, localProject: StoredProject | undefined) {
+    if (!wallet) throw new Error("Connect wallet first");
+    if (amount < 1) throw new Error("Retire at least 1 credit");
+
+    setTxMsg("Generating certificate on IPFS...");
+    const certRes = await fetch(`${apiBase}/retire/certificate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        buyerAddress: wallet.account,
+        projectId: onChainId,
+        projectName: localProject?.input.projectName ?? `Project #${onChainId}`,
+        province: localProject?.input.province ?? "",
+        projectType: localProject?.input.projectType ?? "forest",
+        vintageYear: localProject?.input.vintageYear ?? 2024,
+        creditsRetired: amount
+      })
+    });
+    if (!certRes.ok) {
+      const err = await certRes.json() as { message: string };
+      throw new Error(err.message);
+    }
+    const cert = await certRes.json() as { cid: string; url: string; tokenUri: string };
+    setTxMsg("Certificate pinned to IPFS. Sending retire transaction...");
+
+    const { market } = await getContracts(wallet.provider);
+    const tx = await market.retireCredits(onChainId, amount, cert.tokenUri);
+    await tx.wait();
+    setCertLinks(prev => ({ ...prev, [onChainId]: cert.url }));
+    setTxMsg(`✅ Retired ${amount} credits! NFT certificate: ${cert.url}`);
   }
 
   const portfolioEntries = Object.entries(portfolio);
@@ -297,22 +331,64 @@ export default function BuyerMarketplace() {
                   </div>
                   <span className="text-5xl">🌿</span>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {portfolioEntries.map(([onChainId, bal]) => {
                     const item = listedProjects.find(p => p.onChain.id === Number(onChainId));
+                    const local = item?.local;
+                    const oid = Number(onChainId);
+                    const rAmount = retireAmount[onChainId] ?? 1;
+                    const certUrl = certLinks[onChainId];
                     return (
-                      <div key={onChainId} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
-                        <div>
-                          <p className="font-semibold text-gray-900">
-                            {item ? item.local.input.projectName : `Project #${onChainId}`}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {item ? `${item.local.input.province} • ${item.local.input.projectType}` : `On-chain ID: ${onChainId}`}
-                          </p>
+                      <div key={onChainId} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <span className="text-3xl">
+                              {local?.input.projectType === "forest" ? "🌳"
+                                : local?.input.projectType === "mangrove" ? "🌿"
+                                : local?.input.projectType === "solar" ? "☀️" : "⚡"}
+                            </span>
+                            <div>
+                              <p className="font-bold text-gray-900">
+                                {local ? local.input.projectName : `Project #${onChainId}`}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {local ? `${local.input.province} · ${local.input.projectType} · ${local.input.vintageYear}` : `On-chain ID: ${onChainId}`}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-3xl font-bold text-emerald-700">{bal}</p>
+                            <p className="text-xs text-gray-400">Credits held</p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-2xl font-bold text-emerald-700">{bal}</p>
-                          <p className="text-xs text-gray-400">Carbon Credits</p>
+
+                        {/* Retire panel */}
+                        <div className="border-t border-gray-100 pt-4">
+                          <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Retire Credits</p>
+                          <div className="flex items-center gap-2 mb-3">
+                            <label className="text-xs text-gray-600">จำนวน:</label>
+                            <input
+                              type="number" min={1} max={bal}
+                              value={rAmount}
+                              onChange={(e) => setRetireAmount(prev => ({ ...prev, [onChainId]: Number(e.target.value) }))}
+                              className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                            />
+                            <span className="text-xs text-gray-500">= {rAmount} tCO₂ offset</span>
+                          </div>
+                          <button
+                            disabled={!!actionKey || !wallet || bal < 1}
+                            onClick={() => void runAction(`${onChainId}:retire`, () => retireCredits(oid, rAmount, local))}
+                            className="w-full py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-40 transition-colors">
+                            {actionKey === `${onChainId}:retire` ? "Processing..." : "🔥 Retire & Get NFT Certificate"}
+                          </button>
+
+                          {certUrl && (
+                            <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800">
+                              <p className="font-semibold mb-1">🎉 Certificate minted on IPFS!</p>
+                              <a href={certUrl} target="_blank" rel="noreferrer"
+                                className="text-emerald-600 underline break-all">{certUrl}</a>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );

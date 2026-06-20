@@ -27,6 +27,12 @@ async function main() {
 
   await carbonToken.setMarket(await market.getAddress());
 
+  const RetireCertificate = await ethers.getContractFactory("RetireCertificate");
+  const retireCertificate = await RetireCertificate.deploy(deployer.address);
+  await retireCertificate.waitForDeployment();
+  await (retireCertificate as any).setMarket(await market.getAddress());
+  await (market as any).setRetireCertificate(await retireCertificate.getAddress());
+
   const deployment = {
     network: network.name,
     chainId: Number(network.config.chainId ?? 0),
@@ -35,7 +41,8 @@ async function main() {
     treasury: treasuryAddress,
     utilityToken: await utilityToken.getAddress(),
     carbonToken: await carbonToken.getAddress(),
-    market: await market.getAddress()
+    market: await market.getAddress(),
+    retireCertificate: await retireCertificate.getAddress()
   };
 
   mkdirSync("deployments", { recursive: true });
@@ -53,6 +60,7 @@ async function main() {
       `VITE_MARKET_ADDRESS=${deployment.market}`,
       `VITE_UTILITY_TOKEN_ADDRESS=${deployment.utilityToken}`,
       `VITE_CARBON_TOKEN_ADDRESS=${deployment.carbonToken}`,
+      `VITE_RETIRE_CERTIFICATE_ADDRESS=${deployment.retireCertificate}`,
       `VITE_ASSESSOR_ADDRESS=${deployment.assessor}`,
       `VITE_EXPECTED_SELLER_ADDRESS=${deployment.deployer}`,
       ""
