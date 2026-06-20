@@ -1,12 +1,13 @@
 services:
   - type: web
     name: carbon-market-backend
-    runtime: node
-    rootDir: .
-    buildCommand: npm install && npx prisma generate --schema=backend/prisma/schema.prisma && npm run build -w backend
+    env: node
+    buildCommand: npm install && npm run prisma:generate -w backend && npm run build -w backend
     startCommand: node backend/dist/server.js
     plan: free
     envVars:
+      - key: NODE_VERSION
+        value: 20
       - key: NODE_ENV
         value: production
       - key: PORT
