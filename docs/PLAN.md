@@ -165,7 +165,7 @@ cat contracts/deployments/sepolia.frontend.env
 | Auth / Login System | ❌ ยังไม่มี | Login แยก role (ตอนนี้ใช้ role selector แทน) |
 | Retire Credits + NFT | ✅ เสร็จแล้ว | RetireCertificate.sol (ERC-721) + SVG cert pinned to Pinata IPFS + Buyer Portfolio UI |
 | PostgreSQL + Prisma | ✅ เสร็จแล้ว | Neon serverless PostgreSQL + Prisma ORM — data persist ถาวร |
-| Deploy | ✅ เสร็จแล้ว | Backend: https://blockchain-carbon-market.onrender.com · Frontend: Vercel (deployed) |
+| Deploy | ✅ เสร็จแล้ว | Backend: https://blockchain-carbon-market.onrender.com · Frontend: https://blockchain-carbon-market-frontend.vercel.app |
 
 ---
 
