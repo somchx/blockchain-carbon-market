@@ -669,90 +669,59 @@ pages/
 
 ---
 
-### Sprint 4 (สัปดาห์ 4–5): Developer Dashboard + Submit Flow
-**งาน:**
-- [ ] Developer Dashboard — SubmitProject form (ปรับจาก App.tsx เดิม)
-- [ ] แสดง real data signals ที่ดึงมาจาก API (NDVI, weather, gov status)
-- [ ] Project Status page (pending → assessed → staked → verified → minted)
-- [ ] เชื่อม on-chain `submitProject()` + `depositStake()` กับ real wallet
-- [ ] เพิ่ม `/api/projects/:id/evidence` endpoints
-
-**Output:** Developer submit project ครบ flow พร้อม real data  
-**Test:** Submit → ดู real signals → stake MetaMask → status = "Pending Verification"  
-**Risk:** Gas estimate ต่างกันใน Hardhat vs Sepolia → ทดสอบทั้งสอง  
+### ~~Sprint 4 (สัปดาห์ 4–5): Developer Dashboard + Submit Flow~~ ✅ เสร็จแล้ว
+- [x] Developer Dashboard — SubmitProject form + Risk results preview
+- [x] Real data signals — NASA POWER + OpenWeatherMap ต่อ province/type
+- [x] Project Status panel — Pending → Assessed → Staked → Minted → Challenged/Slashed
+- [x] on-chain `submitProject()` + `depositStake()` กับ MetaMask wallet
+- [x] `/api/projects/:id/evidence` GET + POST endpoints
 
 ---
 
-### Sprint 5 (สัปดาห์ 5–6): Verifier Dashboard
-**งาน:**
-- [ ] Verifier Dashboard — list pending projects
-- [ ] Project Review page — ดู real signals, evidence (IPFS link), risk score
-- [ ] Approve → Verifier sign `publishAssessment()` on-chain ด้วย wallet ตัวเอง
-- [ ] Reject → บันทึก reason + อัปเดต status ใน PostgreSQL
-- [ ] เพิ่ม `/api/verifier/*` endpoints
-- [ ] WebSocket notification เมื่อ status เปลี่ยน (ใช้ Socket.IO)
-
-**Output:** Verifier Approve/Reject ได้จริง, Mint token อัตโนมัติหลัง approve  
-**Test:** Verifier approve on Sepolia → tx confirm → project status = "minted" → Developer เห็น token  
-**Risk:** Verifier ต้องมี ETH บน Sepolia สำหรับ gas → เตรียม faucet ETH ล่วงหน้า  
+### ~~Sprint 5 (สัปดาห์ 5–6): Verifier Dashboard~~ ✅ เสร็จแล้ว (บางส่วน)
+- [x] Verifier Dashboard — pending list + risk bar charts
+- [x] Project Review — real signals + IPFS evidence links
+- [x] Approve → `publishAssessment()` on-chain (MetaMask)
+- [x] Reject button on-chain
+- [ ] WebSocket notification — ยังไม่ทำ (polling แทน)
+- [ ] `/api/verifier/*` dedicated endpoints — ใช้ `/api/projects` เดิมแทน
 
 ---
 
-### Sprint 6 (สัปดาห์ 6–7): USDC Stablecoin + Marketplace
-**งาน:**
-- [ ] Deploy `USDCTestnet.sol` (ERC-20, 6 decimals เหมือน USDC จริง) บน Sepolia
-- [ ] หรือใช้ Circle Testnet USDC (ถ้ามี faucet บน Sepolia)
-- [ ] ปรับ Marketplace ให้รองรับ USDC (6 decimals) แทน PlatformToken
-- [ ] Marketplace page — list tokens + project info + real NDVI + IPFS evidence link
-- [ ] Buy flow — approve USDC spending + `purchaseCredits()` on MetaMask
-- [ ] Portfolio page — Buyer ดู tokens ที่ถือ
-- [ ] เพิ่ม `/api/marketplace/*` endpoints
-
-**Output:** Buyer ซื้อ Carbon Token ด้วย USDC-compatible stablecoin  
-**Test:** Buyer buy 10 credits → USDC หัก, ERC-1155 token เข้า wallet  
-**Risk:** Circle Testnet USDC อาจไม่มีบน Sepolia → deploy USDCTestnet.sol เอง  
+### ~~Sprint 6 (สัปดาห์ 6–7): Marketplace~~ ✅ เสร็จแล้ว (ปรับแผน)
+- [x] Marketplace page — list carbon tokens + project info + trust badge
+- [x] Buy flow — Approve TCUT → `buyCredits()` on MetaMask
+- [x] Portfolio page — ดู tokens ที่ถือ
+- [ ] USDC Stablecoin — ใช้ PlatformToken (TCUT) แทน (เพียงพอสำหรับ MVP)
 
 ---
 
-### Sprint 7 (สัปดาห์ 7–8): Retire Credits + NFT Certificate
-**งาน:**
-- [ ] สร้าง `RetireCertificate.sol` (ERC-721) — Mint NFT เมื่อ Buyer retire credits
-- [ ] เพิ่ม `retireCredits()` ใน `CarbonMarket.sol` — burn ERC-1155 + mint ERC-721
-- [ ] สร้าง certificate PDF อัตโนมัติ (ชื่อ Buyer, จำนวน credits, project, วันที่) → upload IPFS
-- [ ] Retire UI บน Portfolio page
-- [ ] แสดง NFT Certificate ในรูป + download PDF
-
-**Output:** Buyer retire credits → ได้ NFT certificate + PDF บน IPFS  
-**Test:** Retire 10 credits → ERC-1155 burn, ERC-721 mint, PDF เปิดได้จาก IPFS link  
-**Risk:** PDF generation ใน Node.js — ใช้ `pdfkit` หรือ `puppeteer`  
+### ~~Sprint 7 (สัปดาห์ 7–8): Retire Credits + NFT Certificate~~ ✅ เสร็จแล้ว
+- [x] `RetireCertificate.sol` (ERC-721) — Mint NFT เมื่อ Buyer retire
+- [x] `retireCredits()` ใน `CarbonMarket.sol` — burn ERC-1155 + mint ERC-721
+- [x] SVG certificate → upload Pinata IPFS → tokenUri on-chain
+- [x] Retire UI บน Portfolio — amount input + "Retire & Get NFT" button + IPFS link
 
 ---
 
-### Sprint 8 (สัปดาห์ 8–9): DAO Governance
+### ~~Sprint 9 (สัปดาห์ 9–10): Traceability Explorer~~ ✅ เสร็จแล้ว (ปรับแผน)
+- [x] `/explorer` page — search by on-chain project ID
+- [x] Timeline events — ProjectSubmitted → Assessed → Staked → Minted → Purchased → Retired
+- [x] แสดง tx hash, block number, timestamp, IPFS evidence
+- [x] `CreditsRetired` event ใน timeline
+- [ ] Event indexer → PostgreSQL — ยังอ่านจาก chain โดยตรง (เร็วพอสำหรับ demo)
+
+---
+
+### Sprint 8 (สัปดาห์ 8–9): DAO Governance ❌ ยังไม่ทำ
 **งาน:**
-- [ ] Deploy `GovernanceToken.sol` (ERC-20 Votes) — distribute ให้ Verifier/Admin
-- [ ] Deploy `GovernorDAO.sol` (OpenZeppelin Governor) บน Sepolia
-- [ ] DAO proposals: add/remove Verifier, change platform fee, slash fraudulent project
+- [ ] `GovernanceToken.sol` (ERC-20 Votes) — distribute ให้ Verifier/Admin
+- [ ] `GovernorDAO.sol` (OpenZeppelin Governor) — deploy บน Sepolia
+- [ ] DAO proposals: add/remove Verifier, change platform fee, slash project
 - [ ] DAO Governance Portal UI — propose, vote, execute
-- [ ] เชื่อม `/api/dao/*` endpoints กับ GovernorDAO contract
+- [ ] `/api/dao/*` endpoints
 
 **Output:** Community vote เพิ่ม Verifier ใหม่ได้จริงผ่าน DAO  
-**Test:** Admin propose "add verifier 0xAbc..." → Holders vote → pass → Verifier role ถูก grant on-chain  
-**Risk:** Governor contract มีหลาย parameter ต้องปรับ (quorum, voting period, timelock) → ทดสอบบน Hardhat ก่อน  
-
----
-
-### Sprint 9 (สัปดาห์ 9–10): Traceability Explorer
-**งาน:**
-- [ ] Event indexer ใน backend — sync events จาก blockchain ลง PostgreSQL (ไม่ใช่ in-memory)
-- [ ] `token_transactions` table — บันทึก mint, purchase, retire ทุก event
-- [ ] Traceability page — search project → ดู token journey
-- [ ] แสดง: IPFS evidence, real data signals, tx hash, block, timestamp, current owner
-- [ ] เพิ่ม `/api/trace/:id` endpoint
-
-**Output:** ดู full lifecycle ของ Carbon Token ได้ตั้งแต่ collect data → retire  
-**Test:** ค้นหา project → เห็น timeline → คลิก tx hash → เปิด Etherscan Sepolia ได้  
-**Risk:** Event sync miss events เมื่อ backend offline → เพิ่ม from-block replay เมื่อ startup  
 
 ---
 
