@@ -9,6 +9,7 @@ import {FunctionsRequest} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/l
 /// @notice Fetches NASA POWER climate data on-chain via Chainlink Functions.
 ///         Provides verifiable solar irradiance and precipitation signals
 ///         for carbon project risk assessment.
+///         ownerFulfill() enables demo mode when Chainlink Functions testnet is unavailable.
 contract RiskOracleConsumer is FunctionsClient, ConfirmedOwner {
     using FunctionsRequest for FunctionsRequest.Request;
 
@@ -59,9 +60,6 @@ contract RiskOracleConsumer is FunctionsClient, ConfirmedOwner {
     }
 
     /// @notice Request NASA POWER climate data for a project location.
-    /// @param projectId  On-chain project ID (used to match callback)
-    /// @param lat        Latitude string e.g. "13.75"
-    /// @param lon        Longitude string e.g. "100.49"
     function requestOracleData(
         uint256 projectId,
         string calldata lat,
@@ -96,8 +94,6 @@ contract RiskOracleConsumer is FunctionsClient, ConfirmedOwner {
         }
 
         uint256 packed = abi.decode(response, (uint256));
-
-        // Unpack: upper digits = solar, lower 5 digits = precip
         uint256 solarScaled  = packed / 100_000;
         uint256 precipScaled = packed % 100_000;
 
@@ -108,6 +104,23 @@ contract RiskOracleConsumer is FunctionsClient, ConfirmedOwner {
             fulfilled:    true
         });
 
+        emit OracleFulfilled(projectId, solarScaled, precipScaled);
+    }
+
+    /// @notice Demo mode: owner writes oracle data directly.
+    ///         Chainlink Functions Sepolia testnet sunset June 15, 2026 — use this for demos.
+    ///         Data must be fetched from NASA POWER API externally and passed in.
+    function ownerFulfill(
+        uint256 projectId,
+        uint256 solarScaled,
+        uint256 precipScaled
+    ) external onlyOwner {
+        projectOracleData[projectId] = OracleData({
+            solarScaled:  solarScaled,
+            precipScaled: precipScaled,
+            fulfilledAt:  block.timestamp,
+            fulfilled:    true
+        });
         emit OracleFulfilled(projectId, solarScaled, precipScaled);
     }
 
@@ -122,12 +135,11 @@ contract RiskOracleConsumer is FunctionsClient, ConfirmedOwner {
         gasLimit       = _gasLimit;
     }
 
-    /// @notice Replace the oracle JavaScript source (e.g. to point to a different API)
+    /// @notice Replace the oracle JavaScript source
     function updateSource(string calldata _source) external onlyOwner {
         oracleSource = _source;
     }
 
-    /// @notice Convenience: read oracle values with human-readable scaling
     /// @return solar   kWh/m²/day × 100
     /// @return precip  mm/day × 100
     /// @return ts      UNIX timestamp of fulfillment

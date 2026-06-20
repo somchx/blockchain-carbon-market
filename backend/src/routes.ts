@@ -155,3 +155,32 @@ api.post("/projects/assess", async (req, res) => {
     res.status(500).json({ message: msg });
   }
 });
+
+// ── Oracle: fetch real NASA POWER climatology data for a lat/lon ──────────────
+// Used by frontend to simulate Chainlink oracle (Functions testnet sunset June 15, 2026)
+api.get("/oracle/climate", async (req, res) => {
+  const lat = req.query.lat as string;
+  const lon = req.query.lon as string;
+  if (!lat || !lon) return res.status(400).json({ message: "lat and lon required" });
+
+  try {
+    const url = `https://power.larc.nasa.gov/api/temporal/climatology/point?parameters=ALLSKY_SFC_SW_DWN,PRECTOTCORR&community=RE&longitude=${lon}&latitude=${lat}&format=JSON`;
+    const nasaRes = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    if (!nasaRes.ok) throw new Error(`NASA POWER HTTP ${nasaRes.status}`);
+
+    const json = await nasaRes.json() as any;
+    const params = json?.properties?.parameter;
+    const solar = params?.ALLSKY_SFC_SW_DWN?.ANN as number;
+    const precip = params?.PRECTOTCORR?.ANN as number;
+    if (!solar || !precip) throw new Error("NASA POWER response missing ANN values");
+
+    // Match oracle JS source encoding: × 100, integer
+    const solarScaled  = Math.round(solar * 100);
+    const precipScaled = Math.round(precip * 100);
+
+    res.json({ solarScaled, precipScaled, solar, precip, lat, lon });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "NASA POWER fetch failed";
+    res.status(502).json({ message: msg });
+  }
+});

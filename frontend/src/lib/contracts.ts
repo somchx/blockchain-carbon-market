@@ -78,6 +78,7 @@ export const riskOracleAbi = [
   "function oracleSource() view returns (string)",
   "function getOracleData(uint256 projectId) view returns (uint256 solar, uint256 precip, uint256 ts, bool ok)",
   "function requestOracleData(uint256 projectId, string lat, string lon) returns (bytes32)",
+  "function ownerFulfill(uint256 projectId, uint256 solarScaled, uint256 precipScaled)",
   "function updateConfig(bytes32 donId, uint64 subscriptionId, uint32 gasLimit)",
   "event OracleRequested(uint256 indexed projectId, bytes32 indexed requestId, string lat, string lon)",
   "event OracleFulfilled(uint256 indexed projectId, uint256 solarScaled, uint256 precipScaled)",
