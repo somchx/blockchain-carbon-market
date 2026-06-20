@@ -164,8 +164,8 @@ cat contracts/deployments/sepolia.frontend.env
 | Real External APIs | ✅ เสร็จแล้ว | NASA POWER (ทำงาน 100%) + OpenWeatherMap (key pending ~2h) — fallback อัตโนมัติ |
 | Auth / Login System | ❌ ยังไม่มี | Login แยก role (ตอนนี้ใช้ role selector แทน) |
 | Retire Credits + NFT | ❌ ยังไม่มี | Burn token → Mint ERC-721 certificate |
-| PostgreSQL + Prisma | ❌ ยังไม่มี | ยังใช้ in-memory store (data หายเมื่อ restart) |
-| Deploy | ❌ ยังไม่มี | Frontend บน Vercel, Backend บน Render/Railway |
+| PostgreSQL + Prisma | ✅ เสร็จแล้ว | Neon serverless PostgreSQL + Prisma ORM — data persist ถาวร |
+| Deploy | ⏳ ไฟล์พร้อม | `render.yaml` + `frontend/vercel.json` สร้างแล้ว, git commit แล้ว — รอ push + connect dashboards |
 
 ---
 
@@ -900,8 +900,12 @@ pages/
 - [x] **Real External APIs** — NASA POWER จริง (solar irradiance + precipitation ต่อจังหวัด) + OpenWeatherMap (key pending) แทน mockSources.ts ทั้งหมด
 
 ### 🔜 ถัดไป (ลำดับความสำคัญ)
-1. **PostgreSQL + Prisma** — ย้ายออกจาก in-memory store (data หายเมื่อ restart backend)
-2. **Deploy** — Frontend บน Vercel, Backend บน Render/Railway (expose ให้ demo ได้จากนอก localhost)
+
+1. ~~**PostgreSQL + Prisma**~~ ✅ เสร็จแล้ว — Neon + Prisma migrate + build ผ่าน
+2. **Deploy** ⏳ ไฟล์พร้อมแล้ว — ต้องทำด้วยตัวเอง:
+   - สร้าง GitHub repo → `git remote add origin <url>` → `git push -u origin main`
+   - **Render.com** → New Web Service → Connect GitHub → ตั้ง env vars 7 อัน → Deploy
+   - **Vercel** → New Project → Import GitHub → Root dir = `frontend` → ตั้ง `VITE_API_BASE_URL` = Render URL → Deploy
 3. **Retire Credits + NFT Certificate** — `retireCredits()` ใน CarbonMarket.sol + ERC-721 RetireCertificate.sol
 
 ### สมัคร API keys ที่ต้องใช้ก่อน Sprint 2:
@@ -923,5 +927,5 @@ pages/
 
 ---
 
-*อัปเดตล่าสุด: 2026-06-21 — Sprint 1+2+3 เสร็จ: Real APIs (NASA POWER ✅ + OpenWeatherMap ⏳) + Full UI Flow + Traceability*  
+*อัปเดตล่าสุด: 2026-06-21 — PostgreSQL+Prisma ✅, Deploy config พร้อม (render.yaml + vercel.json + git init), Next = Push GitHub → Render → Vercel → Retire NFT*  
 *Architect: Claude Code (claude-sonnet-4-6)*
