@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_DIRECT")
+}
+
+model CarbonProject {
+  id          String   @id
+  createdAt   DateTime @default(now())
+
+  // ProjectForm
+  sellerName            String
+  projectName           String
+  province              String
+  landAreaRai           Int
+  projectType           String
+  requestedCredits      Int
+  selfReportedReduction Int
+  vintageYear           Int
+
+  // RiskAssessment
+  approvedCredits   Int
+  approvedReduction Int
+  requiredStake     Int
+  riskScore         Int
+  trustScore        Int
+  recommendation    String
+  sourceHash        String
+  signals           Json   // DataSignals as JSON blob
+
+  evidence EvidenceFile[]
+
+  @@map("carbon_projects")
+}
+
+model EvidenceFile {
+  id            String   @id
+  projectId     String
+  fileName      String
+  mimeType      String
+  fileSizeBytes Int
+  ipfsCid       String
+  ipfsUrl       String
+  uploadedAt    DateTime @default(now())
+
+  project CarbonProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("evidence_files")
+}

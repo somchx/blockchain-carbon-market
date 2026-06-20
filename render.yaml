@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: carbon-market-backend
+    runtime: node
+    rootDir: .
+    buildCommand: npm install && npx prisma generate --schema=backend/prisma/schema.prisma && npm run build -w backend
+    startCommand: node backend/dist/server.js
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_DIRECT
+        sync: false
+      - key: PINATA_API_KEY
+        sync: false
+      - key: PINATA_API_SECRET
+        sync: false
+      - key: PINATA_JWT
+        sync: false
+      - key: PINATA_GATEWAY
+        sync: false
+      - key: OPENWEATHER_API_KEY
+        sync: false
