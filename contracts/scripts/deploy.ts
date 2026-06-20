@@ -33,6 +33,20 @@ async function main() {
   await (retireCertificate as any).setMarket(await market.getAddress());
   await (market as any).setRetireCertificate(await retireCertificate.getAddress());
 
+  // ── DAO Governance ──────────────────────────────────────────────────
+  const GovernanceToken = await ethers.getContractFactory("GovernanceToken");
+  const govToken = await GovernanceToken.deploy(deployer.address);
+  await govToken.waitForDeployment();
+  // Deployer delegates voting power to themselves
+  await (govToken as any).delegate(deployer.address);
+
+  const GovernorDAO = await ethers.getContractFactory("GovernorDAO");
+  const governor = await GovernorDAO.deploy(await govToken.getAddress());
+  await governor.waitForDeployment();
+
+  // Transfer CarbonMarket ownership to DAO so proposals can execute admin calls
+  await (market as any).transferOwnership(await governor.getAddress());
+
   const deployment = {
     network: network.name,
     chainId: Number(network.config.chainId ?? 0),
@@ -42,7 +56,9 @@ async function main() {
     utilityToken: await utilityToken.getAddress(),
     carbonToken: await carbonToken.getAddress(),
     market: await market.getAddress(),
-    retireCertificate: await retireCertificate.getAddress()
+    retireCertificate: await retireCertificate.getAddress(),
+    governanceToken: await govToken.getAddress(),
+    governor: await governor.getAddress()
   };
 
   mkdirSync("deployments", { recursive: true });
@@ -61,6 +77,8 @@ async function main() {
       `VITE_UTILITY_TOKEN_ADDRESS=${deployment.utilityToken}`,
       `VITE_CARBON_TOKEN_ADDRESS=${deployment.carbonToken}`,
       `VITE_RETIRE_CERTIFICATE_ADDRESS=${deployment.retireCertificate}`,
+      `VITE_GOVERNANCE_TOKEN_ADDRESS=${deployment.governanceToken}`,
+      `VITE_GOVERNOR_ADDRESS=${deployment.governor}`,
       `VITE_ASSESSOR_ADDRESS=${deployment.assessor}`,
       `VITE_EXPECTED_SELLER_ADDRESS=${deployment.deployer}`,
       ""
@@ -70,6 +88,9 @@ async function main() {
   console.log("UtilityToken:", deployment.utilityToken);
   console.log("CarbonCreditToken:", deployment.carbonToken);
   console.log("CarbonMarket:", deployment.market);
+  console.log("RetireCertificate:", deployment.retireCertificate);
+  console.log("GovernanceToken (CGOV):", deployment.governanceToken);
+  console.log("GovernorDAO:", deployment.governor);
   console.log("Deployment manifest:", `deployments/${network.name}.json`);
   console.log("Frontend env template:", `deployments/${network.name}.frontend.env`);
 }
