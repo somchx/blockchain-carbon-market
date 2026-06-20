@@ -163,9 +163,9 @@ cat contracts/deployments/sepolia.frontend.env
 | Traceability Explorer | ✅ เสร็จแล้ว | `/explorer` — ค้นหา on-chain ID → timeline events + tx hash + IPFS evidence |
 | Real External APIs | ✅ เสร็จแล้ว | NASA POWER (ทำงาน 100%) + OpenWeatherMap (key pending ~2h) — fallback อัตโนมัติ |
 | Auth / Login System | ❌ ยังไม่มี | Login แยก role (ตอนนี้ใช้ role selector แทน) |
-| Retire Credits + NFT | ❌ ยังไม่มี | Burn token → Mint ERC-721 certificate |
+| Retire Credits + NFT | ✅ เสร็จแล้ว | RetireCertificate.sol (ERC-721) + SVG cert pinned to Pinata IPFS + Buyer Portfolio UI |
 | PostgreSQL + Prisma | ✅ เสร็จแล้ว | Neon serverless PostgreSQL + Prisma ORM — data persist ถาวร |
-| Deploy | ⏳ ไฟล์พร้อม | `render.yaml` + `frontend/vercel.json` สร้างแล้ว, git commit แล้ว — รอ push + connect dashboards |
+| Deploy | ✅ เสร็จแล้ว | Backend: https://blockchain-carbon-market.onrender.com · Frontend: Vercel (deployed) |
 
 ---
 
@@ -901,12 +901,14 @@ pages/
 
 ### 🔜 ถัดไป (ลำดับความสำคัญ)
 
-1. ~~**PostgreSQL + Prisma**~~ ✅ เสร็จแล้ว — Neon + Prisma migrate + build ผ่าน
-2. **Deploy** ⏳ ไฟล์พร้อมแล้ว — ต้องทำด้วยตัวเอง:
-   - สร้าง GitHub repo → `git remote add origin <url>` → `git push -u origin main`
-   - **Render.com** → New Web Service → Connect GitHub → ตั้ง env vars 7 อัน → Deploy
-   - **Vercel** → New Project → Import GitHub → Root dir = `frontend` → ตั้ง `VITE_API_BASE_URL` = Render URL → Deploy
-3. **Retire Credits + NFT Certificate** — `retireCredits()` ใน CarbonMarket.sol + ERC-721 RetireCertificate.sol
+1. ~~**PostgreSQL + Prisma**~~ ✅ เสร็จแล้ว
+2. ~~**Deploy**~~ ✅ เสร็จแล้ว — Backend: Render · Frontend: Vercel
+3. ~~**Retire Credits + NFT Certificate**~~ ✅ เสร็จแล้ว
+
+### 🔜 ถัดไป (เลือกทำ)
+4. **Deploy Contracts → Sepolia Testnet** — ให้ on-chain tx ทำงานบน deployed frontend ได้จริงโดยไม่ต้องรัน local node
+5. **Seed Data** — สร้างโครงการตัวอย่าง 3–5 โครงการใน DB เพื่อ demo
+6. **DAO Governance** — GovernorDAO.sol + GovernanceToken.sol + voting UI
 
 ### สมัคร API keys ที่ต้องใช้ก่อน Sprint 2:
 - [ ] [Pinata API](https://www.pinata.cloud/) — IPFS pinning
@@ -927,5 +929,5 @@ pages/
 
 ---
 
-*อัปเดตล่าสุด: 2026-06-21 — PostgreSQL+Prisma ✅, Deploy config พร้อม (render.yaml + vercel.json + git init), Next = Push GitHub → Render → Vercel → Retire NFT*  
+*อัปเดตล่าสุด: 2026-06-21 — ครบ Sprint 1–3: PostgreSQL ✅ · Deploy ✅ (Render + Vercel) · Retire NFT ✅ · Next = Sepolia deploy หรือ Seed Data*  
 *Architect: Claude Code (claude-sonnet-4-6)*
