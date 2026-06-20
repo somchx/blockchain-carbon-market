@@ -142,6 +142,23 @@ export default function RoleSelect() {
           </Link>
         </div>
 
+        {/* Chainlink Oracle link */}
+        <div className="mt-3 w-full max-w-5xl">
+          <Link
+            to="/oracle"
+            className="flex items-center justify-between bg-white border border-gray-200 rounded-2xl px-6 py-4 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🔮</span>
+              <div>
+                <p className="font-semibold text-gray-900">Chainlink Oracle</p>
+                <p className="text-sm text-gray-500">ดึงข้อมูล NASA POWER บน Blockchain ผ่าน Chainlink Functions DON — Decentralized data verification</p>
+              </div>
+            </div>
+            <span className="text-gray-300 group-hover:text-indigo-400 text-xl transition-colors">→</span>
+          </Link>
+        </div>
+
         {/* Admin Dashboard link */}
         <div className="mt-3 w-full max-w-5xl">
           <Link

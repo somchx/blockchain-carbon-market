@@ -70,3 +70,16 @@ export const erc20Abi = [
 export const carbonCreditAbi = [
   "function balanceOf(address account, uint256 id) view returns (uint256)"
 ] as const;
+
+export const riskOracleAbi = [
+  "function subscriptionId() view returns (uint64)",
+  "function donId() view returns (bytes32)",
+  "function gasLimit() view returns (uint32)",
+  "function oracleSource() view returns (string)",
+  "function getOracleData(uint256 projectId) view returns (uint256 solar, uint256 precip, uint256 ts, bool ok)",
+  "function requestOracleData(uint256 projectId, string lat, string lon) returns (bytes32)",
+  "function updateConfig(bytes32 donId, uint64 subscriptionId, uint32 gasLimit)",
+  "event OracleRequested(uint256 indexed projectId, bytes32 indexed requestId, string lat, string lon)",
+  "event OracleFulfilled(uint256 indexed projectId, uint256 solarScaled, uint256 precipScaled)",
+  "event OracleError(uint256 indexed projectId, bytes32 indexed requestId, bytes err)"
+] as const;

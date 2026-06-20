@@ -14,6 +14,7 @@ interface ImportMetaEnv {
   readonly VITE_RETIRE_CERTIFICATE_ADDRESS?: string;
   readonly VITE_GOVERNANCE_TOKEN_ADDRESS?: string;
   readonly VITE_GOVERNOR_ADDRESS?: string;
+  readonly VITE_ORACLE_ADDRESS?: string;
 }
 
 interface ImportMeta {
