@@ -165,7 +165,7 @@ cat contracts/deployments/sepolia.frontend.env
 | Deploy: Backend | ✅ Live | https://blockchain-carbon-market.onrender.com |
 | Deploy: Frontend | ✅ Live | https://blockchain-carbon-market-frontend.vercel.app |
 | Auth / Login System | ❌ ยังไม่มี | ตอนนี้ใช้ role selector + wallet address แทน |
-| Sepolia Testnet Deploy | ❌ ยังไม่มี | Contracts ยังอยู่บน Hardhat local — on-chain tx ต้องรัน node เอง |
+| Sepolia Testnet Deploy | ✅ เสร็จแล้ว | 4 contracts live บน Sepolia — Market: `0xa07F...` · frontend/.env + Vercel env อัปเดตแล้ว |
 | DAO Governance | ❌ ยังไม่มี | GovernorDAO.sol + GovernanceToken.sol + voting UI |
 
 ---
@@ -906,10 +906,14 @@ pages/
 2. ~~**Deploy**~~ ✅ เสร็จแล้ว — Backend: Render · Frontend: Vercel
 3. ~~**Retire Credits + NFT Certificate**~~ ✅ เสร็จแล้ว
 
+### ✅ เสร็จครบแล้ว (Sprint ทั้งหมด)
+4. ~~**Deploy Contracts → Sepolia**~~ ✅ — 4 contracts on-chain: PlatformToken, CarbonCreditToken, CarbonMarket, RetireCertificate
+5. ~~**Seed Data**~~ ✅ — 5 โครงการไทยจริงใน Neon DB
+
 ### 🔜 ถัดไป (เลือกทำ)
-4. **Deploy Contracts → Sepolia Testnet** — ให้ on-chain tx ทำงานบน deployed frontend ได้จริงโดยไม่ต้องรัน local node
-5. **Seed Data** — สร้างโครงการตัวอย่าง 3–5 โครงการใน DB เพื่อ demo
-6. **DAO Governance** — GovernorDAO.sol + GovernanceToken.sol + voting UI
+6. **DAO Governance** — GovernorDAO.sol + GovernanceToken.sol + Voting UI (add/remove Verifier by vote)
+7. **Demo Polish** — Landing page สวยขึ้น, Mobile responsive, Error handling ครบ, Demo script
+8. **Chainlink Oracle** — แทนที่ assessor wallet ด้วย decentralized oracle feed
 
 ### สมัคร API keys ที่ต้องใช้ก่อน Sprint 2:
 - [ ] [Pinata API](https://www.pinata.cloud/) — IPFS pinning
@@ -930,5 +934,5 @@ pages/
 
 ---
 
-*อัปเดตล่าสุด: 2026-06-21 — ครบ: PostgreSQL ✅ · Deploy ✅ · Retire NFT ✅ · Seed Data ✅ (5 โครงการ real API) · Next = Sepolia หรือ DAO*  
+*อัปเดตล่าสุด: 2026-06-21 — ครบทุก Sprint: PostgreSQL · Deploy (Render+Vercel) · Retire NFT · Seed Data · Sepolia Testnet ✅ · Next = DAO หรือ Polish*  
 *Architect: Claude Code (claude-sonnet-4-6)*

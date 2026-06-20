@@ -1,0 +1,11 @@
+{
+  "network": "sepolia",
+  "chainId": 0,
+  "deployer": "0x2910A663A02c055a84F1d95904318ac265F50135",
+  "assessor": "0x2910A663A02c055a84F1d95904318ac265F50135",
+  "treasury": "0x2910A663A02c055a84F1d95904318ac265F50135",
+  "utilityToken": "0xd6837D3A6fC38FeE7CBb7dcEB1C861718dc0aDbA",
+  "carbonToken": "0xc3f93F512d7Cd9A77532c6aaa14356313c460995",
+  "market": "0xa07Fd70C4CFAB80c8c8fd186dc71584ccC829940",
+  "retireCertificate": "0xFfECB574cbA20d75873eD8C1E3A8b56B3527e5B9"
+}
