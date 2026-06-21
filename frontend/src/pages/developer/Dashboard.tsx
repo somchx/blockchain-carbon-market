@@ -403,13 +403,19 @@ export default function DeveloperDashboard() {
                         <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-500">
                           📝 Step 1: Submit project on-chain to start the verification process
                         </div>
-                        <button
-                          disabled={!!actionKey || !wallet}
-                          onClick={() => void runAction(`${project.id}:submit`, () => submitOnChain(project))}
-                          className="w-full text-sm bg-gray-800 text-white py-2.5 rounded-lg hover:bg-gray-900 disabled:opacity-40 font-semibold transition-colors"
-                        >
-                          {actionKey === `${project.id}:submit` ? "Submitting..." : "📝 Submit On-Chain"}
-                        </button>
+                        {!wallet ? (
+                          <div className="w-full text-sm bg-amber-50 border border-amber-200 text-amber-700 py-2.5 px-4 rounded-lg text-center font-medium">
+                            🔌 Connect MetaMask ก่อน (กดปุ่ม Connect ด้านบน)
+                          </div>
+                        ) : (
+                          <button
+                            disabled={!!actionKey}
+                            onClick={() => void runAction(`${project.id}:submit`, () => submitOnChain(project))}
+                            className="w-full text-sm bg-gray-800 text-white py-2.5 rounded-lg hover:bg-gray-900 disabled:opacity-40 font-semibold transition-colors"
+                          >
+                            {actionKey === `${project.id}:submit` ? "Submitting..." : "📝 Submit On-Chain"}
+                          </button>
+                        )}
                       </div>
                     )}
 
