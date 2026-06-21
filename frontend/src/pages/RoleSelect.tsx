@@ -109,37 +109,30 @@ export default function RoleSelect() {
       <main className="mx-auto max-w-6xl px-4 py-10 space-y-10">
 
         {/* ── Hero ── */}
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-900 via-slate-800 to-emerald-950 px-8 py-14 text-white shadow-xl">
-          {/* subtle grid overlay */}
-          <div className="pointer-events-none absolute inset-0 opacity-[0.04]"
-            style={{ backgroundImage: "repeating-linear-gradient(0deg,#fff 0,#fff 1px,transparent 1px,transparent 40px),repeating-linear-gradient(90deg,#fff 0,#fff 1px,transparent 1px,transparent 40px)" }} />
-
-          <div className="relative max-w-3xl">
-            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-400">
+        <section className="rounded-2xl border border-gray-200 bg-white px-7 py-6 shadow-sm flex flex-wrap items-center justify-between gap-5">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">
               Research Prototype · Sepolia Testnet · Hardhat + Solidity
             </p>
-            <h1 className="text-4xl font-bold leading-tight text-white sm:text-5xl">
-              ตลาดคาร์บอนเครดิต<br />
-              <span className="text-emerald-400">ที่ตรวจสอบได้จริง</span>
+            <h1 className="mt-1.5 text-xl font-bold text-gray-900">
+              ตลาดคาร์บอนเครดิต{" "}
+              <span className="text-emerald-600">ที่ตรวจสอบได้จริง</span>
             </h1>
-            <p className="mt-5 max-w-xl text-base leading-8 text-slate-300">
-              End-to-end carbon credit lifecycle บน Ethereum — ตั้งแต่ submit โครงการ, ประเมินความเสี่ยงด้วย NASA POWER API,
-              เก็บหลักฐานบน IPFS, ซื้อขาย Token ไปจนถึงออก NFT ใบรับรองการ offset
+            <p className="mt-1.5 max-w-xl text-sm leading-6 text-gray-500">
+              End-to-end carbon credit lifecycle บน Ethereum — Submit · Verify · Mint · Trade · Retire พร้อม IPFS evidence และ NFT certificate
             </p>
-
-            <div className="mt-8 flex flex-wrap gap-6 text-sm">
-              {[
-                ["7", "Smart Contracts", "บน Sepolia"],
-                ["3", "Token Standards", "ERC-1155 / 20 / 721"],
-                ["51+", "Unit Tests", "Hardhat + Jest"],
-              ].map(([num, label, sub]) => (
-                <div key={label}>
-                  <p className="text-2xl font-bold text-white">{num}</p>
-                  <p className="text-emerald-400 text-xs font-semibold">{label}</p>
-                  <p className="text-slate-500 text-[11px]">{sub}</p>
-                </div>
-              ))}
-            </div>
+          </div>
+          <div className="flex gap-6">
+            {[
+              ["7", "Smart Contracts"],
+              ["3", "Token Standards"],
+              ["51+", "Unit Tests"],
+            ].map(([num, label]) => (
+              <div key={label} className="text-center">
+                <p className="text-2xl font-bold text-gray-900">{num}</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">{label}</p>
+              </div>
+            ))}
           </div>
         </section>
 
