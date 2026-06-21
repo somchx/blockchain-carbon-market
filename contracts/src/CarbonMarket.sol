@@ -78,6 +78,7 @@ contract CarbonMarket is Ownable, ERC1155Holder {
     event ChallengeVoted(uint256 indexed projectId, address indexed reviewer, bool fraudDetected);
     event ChallengeFinalized(uint256 indexed projectId, bool fraudConfirmed, uint256 slashedAmount);
     event RewardIssued(uint256 indexed projectId, uint256 rewardAmount, uint256 updatedTrustScore);
+    event ProjectRejected(uint256 indexed projectId, address indexed assessor, uint256 slashedAmount);
 
     error InvalidState();
     error Unauthorized();
@@ -324,6 +325,34 @@ contract CarbonMarket is Ownable, ERC1155Holder {
         }
 
         emit ChallengeFinalized(projectId, fraudConfirmed, slashedAmount);
+    }
+
+    function rejectProject(uint256 projectId, uint256 slashBps) external onlyAssessor {
+        Project storage project = projects[projectId];
+        if (
+            project.status == ProjectStatus.Minted ||
+            project.status == ProjectStatus.Slashed ||
+            project.status == ProjectStatus.Closed
+        ) revert InvalidState();
+
+        uint256 slashedAmount = 0;
+        if (project.stakedAmount > 0 && slashBps > 0) {
+            slashedAmount = (project.stakedAmount * slashBps) / 10_000;
+            if (slashedAmount > 0) {
+                project.stakedAmount -= slashedAmount;
+                utilityToken.transfer(treasury, slashedAmount);
+            }
+        }
+
+        // Return remaining stake to seller
+        if (project.stakedAmount > 0) {
+            uint256 remaining = project.stakedAmount;
+            project.stakedAmount = 0;
+            utilityToken.transfer(project.seller, remaining);
+        }
+
+        project.status = ProjectStatus.Slashed;
+        emit ProjectRejected(projectId, msg.sender, slashedAmount);
     }
 
     function rewardHonestProject(uint256 projectId, uint256 rewardAmount, uint256 trustBoost) external onlyAssessor {

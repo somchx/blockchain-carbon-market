@@ -50,6 +50,7 @@ export default function VerifierDashboard() {
   const [actionKey, setActionKey] = useState<string | null>(null);
   const [txMsg, setTxMsg] = useState("");
   const [filter, setFilter] = useState<"all" | "pending" | "assessed">("all");
+  const [slashPct, setSlashPct] = useState<Record<string, number>>({});
   const [evidenceMap, setEvidenceMap] = useState<Record<string, EvidenceFile[]>>({});
   const [pageLoading, setPageLoading] = useState(true);
 
@@ -106,6 +107,21 @@ export default function VerifierDashboard() {
     } finally {
       setActionKey(null);
     }
+  }
+
+  async function rejectOnChain(project: StoredProject) {
+    if (!wallet) throw new Error("Connect wallet first");
+    const onChainId = projectMap[project.id];
+    if (!onChainId) throw new Error("Project not submitted on-chain yet");
+    const pct = slashPct[project.id] ?? 50;
+    const bps = pct * 100;
+    const { market } = await getContracts(wallet.provider);
+    const tx = await market.rejectProject(onChainId, bps);
+    await tx.wait();
+    setTxMsg(`🔴 Rejected Project #${onChainId} — Slashed ${pct}% of stake`);
+    setSelected(null);
+    await loadProjects();
+    if (wallet) await loadOnChain(wallet);
   }
 
   async function approveOnChain(project: StoredProject) {
@@ -308,20 +324,46 @@ export default function VerifierDashboard() {
                             disabled={!!actionKey || !wallet || !isReady || !isAssessor}
                             onClick={() => void runAction(`${project.id}:approve`, () => approveOnChain(project))}
                             className="flex-1 bg-emerald-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 disabled:opacity-40 transition-colors">
-                            {actionKey === `${project.id}:approve` ? "Approving..." : "✅ Approve On-Chain"}
-                          </button>
-                          <button
-                            disabled={!!actionKey}
-                            onClick={() => { setTxMsg(`❌ Rejected: ${comment || "No reason given"}`); setSelected(null); }}
-                            className="flex-1 bg-red-50 text-red-600 border border-red-200 py-2 rounded-lg text-sm font-semibold hover:bg-red-100 disabled:opacity-40 transition-colors">
-                            ❌ Reject
+                            {actionKey === `${project.id}:approve` ? "⏳ Approving..." : "✅ Approve On-Chain"}
                           </button>
                         </div>
+
+                        {/* Reject section */}
+                        {isAssessor && isReady && (
+                          <div className="mt-4 border border-red-200 rounded-xl p-4 bg-red-50">
+                            <p className="text-xs font-semibold text-red-700 mb-3">🔴 Reject โปรเจกต์นี้</p>
+                            <div className="mb-3">
+                              <div className="flex justify-between text-xs mb-1">
+                                <span className="text-gray-600">Slash Stake (%)</span>
+                                <span className="font-bold text-red-600">{slashPct[project.id] ?? 50}%</span>
+                              </div>
+                              <input type="range" min={0} max={100} step={5}
+                                value={slashPct[project.id] ?? 50}
+                                onChange={(e) => setSlashPct(prev => ({ ...prev, [project.id]: Number(e.target.value) }))}
+                                className="w-full accent-red-500" />
+                              <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
+                                <span>0% — คืน Stake ทั้งหมด</span>
+                                <span>100% — ยึดทั้งหมด</span>
+                              </div>
+                              <p className="text-[10px] text-gray-500 mt-1.5 leading-4">
+                                ถ้า project ยังไม่ได้ stake → slash = 0 อัตโนมัติ<br/>
+                                Stake ที่ยึดได้จะโอนเข้า Treasury ทั้งหมด
+                              </p>
+                            </div>
+                            <button
+                              disabled={!!actionKey}
+                              onClick={() => void runAction(`${project.id}:reject`, () => rejectOnChain(project))}
+                              className="w-full bg-red-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-red-700 disabled:opacity-40 transition-colors">
+                              {actionKey === `${project.id}:reject` ? "⏳ Rejecting..." : `🔴 Reject & Slash ${slashPct[project.id] ?? 50}%`}
+                            </button>
+                          </div>
+                        )}
+
                         {!isAssessor && wallet && (
-                          <p className="text-xs text-amber-600 mt-2">Switch to Assessor wallet to approve on-chain</p>
+                          <p className="text-xs text-amber-600 mt-2">Switch to Assessor wallet to approve or reject on-chain</p>
                         )}
                         {!wallet && (
-                          <p className="text-xs text-gray-400 mt-2">Connect wallet to approve on-chain</p>
+                          <p className="text-xs text-gray-400 mt-2">Connect wallet to approve or reject on-chain</p>
                         )}
                       </div>
                     </div>

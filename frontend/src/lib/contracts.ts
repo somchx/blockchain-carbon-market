@@ -6,6 +6,7 @@ export const carbonMarketAbi = [
   "function nextProjectId() view returns (uint256)",
   "function submitProject(string metadataUri, string sourceDataHash, uint256 requestedCredits, uint256 vintageYear) returns (uint256)",
   "function assessProject(uint256 projectId, uint256 approvedCredits, uint256 riskScore, uint256 trustScore, uint256 requiredStake)",
+  "function rejectProject(uint256 projectId, uint256 slashBps)",
   "function depositProjectStake(uint256 projectId, uint256 amount)",
   "function mintAndListCredits(uint256 projectId, uint256 pricePerCredit, string tokenUri)",
   "function buyCredits(uint256 projectId, uint256 amount)",
@@ -19,6 +20,7 @@ export const carbonMarketAbi = [
   "event ChallengeOpened(uint256 indexed projectId, address indexed challenger, uint256 deadline)",
   "event ChallengeFinalized(uint256 indexed projectId, bool fraudConfirmed, uint256 slashedAmount)",
   "event RewardIssued(uint256 indexed projectId, uint256 rewardAmount, uint256 updatedTrustScore)",
+  "event ProjectRejected(uint256 indexed projectId, address indexed assessor, uint256 slashedAmount)",
   "event CreditsRetired(uint256 indexed projectId, address indexed retiree, uint256 amount, uint256 certTokenId)"
 ] as const;
 
