@@ -15,6 +15,8 @@ const initialForm: ProjectForm = {
   sellerName: "",
   projectName: "",
   province: "ChiangMai",
+  lat: undefined,
+  lon: undefined,
   landAreaRai: 100,
   projectType: "forest",
   requestedCredits: 500,
@@ -22,7 +24,29 @@ const initialForm: ProjectForm = {
   vintageYear: 2026,
 };
 
-const provinces = ["ChiangMai", "Bangkok", "KhonKaen", "SuratThani", "Chonburi", "Phuket"];
+const provinces = [
+  // ภาคเหนือ
+  "ChiangMai", "ChiangRai", "Lamphun", "Lampang", "Phrae", "Nan", "Phayao",
+  "MaeHongSon", "Tak", "Sukhothai", "Uttaradit", "Phitsanulok", "Phichit",
+  "Phetchabun", "KamphaengPhet",
+  // ภาคกลาง
+  "Bangkok", "Nonthaburi", "PathumThani", "SamutPrakan", "SamutSakhon",
+  "SamutSongkhram", "NakhonPathom", "SuphanBuri", "SingBuri", "AngThong",
+  "LopBuri", "Saraburi", "NakhonNayok", "PrachinBuri", "SaKaeo", "Ayutthaya",
+  "ChaiNat", "NakhonSawan", "UthaithThani", "Kanchanaburi", "Ratchaburi",
+  "Phetchaburi", "PrachuapKhiriKhan",
+  // ภาคตะวันออก
+  "Chonburi", "Rayong", "Chanthaburi", "Trat", "Chachoengsao",
+  // ภาคตะวันออกเฉียงเหนือ
+  "KhonKaen", "UdonThani", "NongKhai", "Loei", "NongBuaLamphu", "SakonNakhon",
+  "NakhonPhanom", "Mukdahan", "Kalasin", "RoiEt", "Yasothon", "AmnatCharoen",
+  "UbonRatchathani", "SiSaKet", "Surin", "Buriram", "NakhonRatchasima",
+  "Chaiyaphum", "MahaSarakham", "BuengKan",
+  // ภาคใต้
+  "SuratThani", "Phuket", "NakhonSiThammarat", "Krabi", "PhangNga", "Ranong",
+  "Chumphon", "Songkhla", "Satun", "Trang", "Phatthalung", "Pattani", "Yala",
+  "Narathiwat",
+];
 
 function shorten(addr: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -61,8 +85,12 @@ const statusStyle: Record<number, string> = {
   6: "bg-gray-100 text-gray-500",
 };
 
+const TGO_MAX_RATE: Record<string, number> = { forest: 3.5, mangrove: 6.0, solar: 8.0, biogas: 5.0 };
+
 export default function DeveloperDashboard() {
   const [form, setForm] = useState<ProjectForm>(initialForm);
+  const tgoMaxCredits = Math.floor(form.landAreaRai * (TGO_MAX_RATE[form.projectType] ?? 3.5));
+  const tgoExceeded = form.requestedCredits > tgoMaxCredits;
   const [projects, setProjects] = useState<StoredProject[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [wallet, setWallet] = useState<WalletState | null>(null);
@@ -70,6 +98,7 @@ export default function DeveloperDashboard() {
   const [onChainData, setOnChainData] = useState<Record<string, OnChainProject>>({});
   const [actionKey, setActionKey] = useState<string | null>(null);
   const [txMsg, setTxMsg] = useState("");
+  const [cardMsg, setCardMsg] = useState<Record<string, string>>({});
   const [tab, setTab] = useState<"submit" | "projects">("submit");
   const [mintPriceMap, setMintPriceMap] = useState<Record<string, string>>({});
   const [pageLoading, setPageLoading] = useState(true);
@@ -122,18 +151,20 @@ export default function DeveloperDashboard() {
     }
   }
 
-  async function runAction(key: string, task: () => Promise<void>) {
+  async function runAction(key: string, task: () => Promise<void>, projectId?: string) {
     setActionKey(key);
-    setTxMsg("⏳ กรุณาตรวจสอบ MetaMask popup และกด Confirm...");
+    const pending = "⏳ กรุณาตรวจสอบ MetaMask popup และกด Confirm...";
+    setTxMsg(pending);
+    if (projectId) setCardMsg(prev => ({ ...prev, [projectId]: pending }));
     try {
       await task();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Transaction failed";
-      // user rejected = short message, otherwise show full error
       const clean = msg.includes("user rejected") || msg.includes("User denied")
         ? "❌ ยกเลิกใน MetaMask"
-        : `❌ ${msg.slice(0, 300)}`;
+        : `❌ ${msg.slice(0, 200)}`;
       setTxMsg(clean);
+      if (projectId) setCardMsg(prev => ({ ...prev, [projectId]: clean }));
     } finally {
       setActionKey(null);
       await refreshWallet();
@@ -167,7 +198,9 @@ export default function DeveloperDashboard() {
     const { utilityToken } = await getContracts(wallet.provider);
     const tx = await utilityToken.approve(config.marketAddress, parseEther(String(project.assessment.requiredStake)));
     await tx.wait();
-    setTxMsg(`✅ Approved ${project.assessment.requiredStake} tokens for staking`);
+    const msg = `✅ Approve สำเร็จ! ตอนนี้กด "2b. Deposit Stake" ได้เลย`;
+    setTxMsg(msg);
+    setCardMsg(prev => ({ ...prev, [project.id]: msg }));
   }
 
   async function depositStake(project: StoredProject) {
@@ -177,7 +210,9 @@ export default function DeveloperDashboard() {
     const { market } = await getContracts(wallet.provider);
     const tx = await market.depositProjectStake(onChainId, parseEther(String(project.assessment.requiredStake)));
     await tx.wait();
-    setTxMsg(`✅ Staked collateral for Project #${onChainId} — Ready to Mint!`);
+    const msg = `✅ Stake สำเร็จ! Project #${onChainId} พร้อม Mint แล้ว`;
+    setTxMsg(msg);
+    setCardMsg(prev => ({ ...prev, [project.id]: msg }));
     await refreshOnChain(project.id, onChainId);
   }
 
@@ -270,6 +305,27 @@ export default function DeveloperDashboard() {
                     </select>
                   </label>
                 </div>
+                {/* Optional custom coordinates */}
+                <details className="group">
+                  <summary className="cursor-pointer text-xs text-blue-600 hover:text-blue-800 font-medium select-none list-none flex items-center gap-1">
+                    <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
+                    ระบุพิกัด GPS พื้นที่โครงการจริง (optional — ถ้าไม่กรอก ใช้พิกัดตัวเมืองจังหวัด)
+                  </summary>
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    <label className="block">
+                      <span className="text-xs font-medium text-gray-600">Latitude</span>
+                      <input type="number" step="0.0001" placeholder="เช่น 18.7904"
+                        className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                        value={form.lat ?? ""} onChange={(e) => setForm({ ...form, lat: e.target.value ? Number(e.target.value) : undefined })} />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-medium text-gray-600">Longitude</span>
+                      <input type="number" step="0.0001" placeholder="เช่น 98.9853"
+                        className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                        value={form.lon ?? ""} onChange={(e) => setForm({ ...form, lon: e.target.value ? Number(e.target.value) : undefined })} />
+                    </label>
+                  </div>
+                </details>
                 <div className="grid grid-cols-3 gap-3">
                   <label className="block">
                     <span className="text-xs font-medium text-gray-600">พื้นที่ (ไร่)</span>
@@ -292,6 +348,11 @@ export default function DeveloperDashboard() {
                   <input type="number" className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
                     value={form.selfReportedReduction} onChange={(e) => setForm({ ...form, selfReportedReduction: Number(e.target.value) })} min={1} />
                 </label>
+                {tgoExceeded && (
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    ⚠️ Credits ที่ขอ ({form.requestedCredits}) เกินขีดจำกัด TGO: พื้นที่ {form.landAreaRai} ไร่ absorb ได้สูงสุด <strong>{tgoMaxCredits} tCO₂/ปี</strong> ({TGO_MAX_RATE[form.projectType]} tCO₂/ไร่/ปี) — ระบบจะปรับลดอัตโนมัติ
+                  </p>
+                )}
                 <button type="submit" disabled={submitting}
                   className="w-full bg-emerald-600 text-white py-2.5 rounded-lg font-semibold text-sm hover:bg-emerald-700 disabled:opacity-50 transition-colors">
                   {submitting ? "Assessing..." : "🔍 Assess Risk & Submit"}
@@ -375,14 +436,90 @@ export default function DeveloperDashboard() {
                   </div>
 
                   {/* Signals */}
-                  <div className="grid grid-cols-3 gap-2 mb-4">
-                    {Object.entries(project.assessment.signals).map(([k, v]) => (
-                      <div key={k} className="flex justify-between text-xs bg-gray-50 rounded px-2 py-1">
-                        <span className="text-gray-500 capitalize">{k.replace(/([A-Z])/g, " $1").trim()}</span>
-                        <span className="font-semibold text-gray-700">{v}</span>
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-3 gap-2 mb-3">
+                    {Object.entries(project.assessment.signals).map(([k, v]) => {
+                      const SOURCE_BADGE: Record<string, { label: string; color: string }> = {
+                        nasa_solarIrradiance: { label: "NASA", color: "text-blue-500" },
+                        nasa_precipitation:   { label: "NASA", color: "text-blue-500" },
+                        weather_temperature:  { label: "OWM",  color: "text-sky-500" },
+                        weather_humidity:     { label: "OWM",  color: "text-sky-500" },
+                        weather_cloudCover:   { label: "OWM",  color: "text-sky-500" },
+                        ndvi:                { label: "🛰️",   color: "text-emerald-600" },
+                        landCoverType:       { label: "🛰️",   color: "text-emerald-600" },
+                        iotConfidence:       { label: "🛰️ NDVI", color: "text-emerald-600" },
+                        governmentConfidence:{ label: "🛰️ LC", color: "text-emerald-600" },
+                        historicalConfidence:{ label: "NASA",  color: "text-blue-500" },
+                        userInputConfidence: { label: "input", color: "text-gray-400" },
+                        anomalyScore:        { label: "input", color: "text-gray-400" },
+                        additionalityScore:  { label: "calc",  color: "text-purple-400" },
+                        dataSource:          { label: "",      color: "" },
+                      };
+                      const badge = SOURCE_BADGE[k];
+                      return (
+                        <div key={k} className="flex justify-between items-center text-xs bg-gray-50 rounded px-2 py-1 gap-1">
+                          <span className="text-gray-500 capitalize truncate">{k.replace(/([A-Z])/g, " $1").replace(/_/g, " ").trim()}</span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {badge?.label && <span className={`text-[9px] font-bold ${badge.color}`}>{badge.label}</span>}
+                            <span className="font-semibold text-gray-700">{String(v)}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
+
+                  {/* How it's calculated — collapsible */}
+                  <details className="mb-4 group">
+                    <summary className="cursor-pointer text-xs text-blue-600 hover:text-blue-800 font-medium select-none list-none flex items-center gap-1">
+                      <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
+                      ดูวิธีคำนวณ Risk Score และ Approved Credits
+                    </summary>
+                    <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 p-4 text-xs space-y-3 text-gray-700">
+                      <div>
+                        <p className="font-bold text-gray-900 mb-2">📡 แหล่งข้อมูลแต่ละ Signal</p>
+                        <div className="space-y-1.5">
+                          {[
+                            { badge: "🛰️ NDVI", color: "bg-emerald-100 text-emerald-700", label: "iotConfidence", desc: "NASA MODIS ถ่ายภาพดาวเทียม 250m ทุก 16 วัน — วัดความเขียวพืช (NDVI) ที่ lat/lon จังหวัดจริง" },
+                            { badge: "🛰️ LC",   color: "bg-emerald-100 text-emerald-700", label: "governmentConfidence", desc: "MODIS Land Cover — ดาวเทียมบอกว่าพื้นที่นั้นเป็น forest/urban/cropland จริงไหม ถ้า claim forest แต่ดาวเทียมเห็น urban → ค่าต่ำ" },
+                            { badge: "NASA",   color: "bg-blue-100 text-blue-700",    label: "historicalConfidence", desc: "NASA POWER API — ข้อมูลแสงอาทิตย์ (W/m²) และปริมาณฝน (mm/day) เฉลี่ยปี 2023 ที่พิกัดจังหวัด" },
+                            { badge: "OWM",    color: "bg-sky-100 text-sky-700",      label: "weather_*", desc: "OpenWeatherMap — อุณหภูมิ, ความชื้น, เมฆปกคลุม ณ วันที่ submit จริง" },
+                            { badge: "input",  color: "bg-gray-100 text-gray-600",    label: "userInputConfidence / anomalyScore", desc: "คำนวณจากตัวเลขที่กรอก — ถ้า requestedCredits กับ selfReportedReduction ห่างกันมาก anomaly สูง" },
+                          ].map(row => (
+                            <div key={row.label} className="flex gap-2 items-start">
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${row.color}`}>{row.badge}</span>
+                              <div><span className="font-semibold text-gray-800">{row.label}</span> — {row.desc}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="border-t border-blue-200 pt-3">
+                        <p className="font-bold text-gray-900 mb-1.5">🔢 สูตร Risk Score</p>
+                        <div className="font-mono bg-white rounded p-2 text-[10px] leading-5 text-gray-700">
+                          <p>blend = iot×30% + government×30% + historical×25% + userInput×15%</p>
+                          <p>riskScore = 100 − blend + (anomaly × 0.45) − (additionality × 0.2)</p>
+                          <p className="text-gray-400 mt-1">ยิ่ง confidence ต่ำ + anomaly สูง → risk สูง</p>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-blue-200 pt-3">
+                        <p className="font-bold text-gray-900 mb-1.5">🌿 สูตร Approved Credits</p>
+                        <div className="font-mono bg-white rounded p-2 text-[10px] leading-5 text-gray-700">
+                          <p>reduction = selfReported × (blend/100) × ((100−risk)/100)</p>
+                          <p>approvedCredits = min(requested, reduction)</p>
+                          <p className="text-gray-400 mt-1">risk สูง = ได้ credits น้อยลง, ต้อง stake มากขึ้น</p>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-blue-200 pt-3">
+                        <p className="font-bold text-gray-900 mb-1.5">🔒 สูตร Required Stake</p>
+                        <div className="font-mono bg-white rounded p-2 text-[10px] leading-5 text-gray-700">
+                          <p>multiplier = 0.4 + (riskScore/100) × 1.8</p>
+                          <p>requiredStake = max(100, approvedCredits × multiplier) TCUT</p>
+                          <p className="text-gray-400 mt-1">risk 60 → multiplier 1.48 → stake สูงขึ้น</p>
+                        </div>
+                      </div>
+                    </div>
+                  </details>
 
                   {/* On-chain info */}
                   {onChain && (
@@ -413,13 +550,20 @@ export default function DeveloperDashboard() {
                             🔌 Connect MetaMask ก่อน (กดปุ่ม Connect ด้านบน)
                           </div>
                         ) : (
-                          <button
-                            disabled={!!actionKey}
-                            onClick={() => void runAction(`${project.id}:submit`, () => submitOnChain(project))}
-                            className="w-full text-sm bg-gray-800 text-white py-2.5 rounded-lg hover:bg-gray-900 disabled:opacity-40 font-semibold transition-colors"
-                          >
-                            {actionKey === `${project.id}:submit` ? "Submitting..." : "📝 Submit On-Chain"}
-                          </button>
+                          <>
+                            <button
+                              disabled={!!actionKey}
+                              onClick={() => void runAction(`${project.id}:submit`, () => submitOnChain(project), project.id)}
+                              className="w-full text-sm bg-gray-800 text-white py-2.5 rounded-lg hover:bg-gray-900 disabled:opacity-40 font-semibold transition-colors"
+                            >
+                              {actionKey === `${project.id}:submit` ? "⏳ Submitting..." : "📝 Submit On-Chain"}
+                            </button>
+                            {cardMsg[project.id] && (
+                              <p className={`text-xs mt-1 px-1 ${cardMsg[project.id].startsWith("✅") ? "text-emerald-700" : cardMsg[project.id].startsWith("❌") ? "text-red-600" : "text-blue-600"}`}>
+                                {cardMsg[project.id]}
+                              </p>
+                            )}
+                          </>
                         )}
                       </div>
                     )}
@@ -456,19 +600,24 @@ export default function DeveloperDashboard() {
                         <div className="flex gap-2">
                           <button
                             disabled={!!actionKey || !wallet}
-                            onClick={() => void runAction(`${project.id}:approveStake`, () => approveStake(project))}
+                            onClick={() => void runAction(`${project.id}:approveStake`, () => approveStake(project), project.id)}
                             className="flex-1 text-xs bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 disabled:opacity-40 font-semibold transition-colors"
                           >
-                            {actionKey === `${project.id}:approveStake` ? "Approving..." : "2a. Approve Token"}
+                            {actionKey === `${project.id}:approveStake` ? "⏳ Approving..." : "2a. Approve Token"}
                           </button>
                           <button
                             disabled={!!actionKey || !wallet}
-                            onClick={() => void runAction(`${project.id}:stake`, () => depositStake(project))}
+                            onClick={() => void runAction(`${project.id}:stake`, () => depositStake(project), project.id)}
                             className="flex-1 text-xs bg-emerald-600 text-white py-2.5 rounded-lg hover:bg-emerald-700 disabled:opacity-40 font-semibold transition-colors"
                           >
-                            {actionKey === `${project.id}:stake` ? "Staking..." : "2b. Deposit Stake →"}
+                            {actionKey === `${project.id}:stake` ? "⏳ Staking..." : "2b. Deposit Stake →"}
                           </button>
                         </div>
+                        {cardMsg[project.id] && (
+                          <p className={`text-xs mt-1 px-1 ${cardMsg[project.id].startsWith("✅") ? "text-emerald-700" : cardMsg[project.id].startsWith("❌") ? "text-red-600" : "text-blue-600"}`}>
+                            {cardMsg[project.id]}
+                          </p>
+                        )}
                       </div>
                     )}
 

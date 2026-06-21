@@ -342,6 +342,136 @@ export default function ManualPage() {
           </div>
         </section>
 
+        {/* ── Assessment methodology ── */}
+        <section>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">ระบบประเมินโครงการยังไง?</p>
+
+          <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm space-y-6">
+
+            {/* Intro */}
+            <div className="flex gap-4 items-start">
+              <span className="text-4xl shrink-0">🔬</span>
+              <div>
+                <h3 className="font-bold text-gray-900">ระบบไม่ได้ใช้คนตรวจ — ใช้ข้อมูลจริงจาก 4 แหล่ง</h3>
+                <p className="text-sm text-gray-500 mt-1 leading-6">
+                  เมื่อ Developer กรอกข้อมูลโครงการ ระบบจะ query ข้อมูลจาก API ภายนอกพร้อมกันทันที
+                  แล้วนำมาคำนวณ Risk Score และจำนวนเครดิตที่อนุมัติได้ อัตโนมัติ
+                </p>
+              </div>
+            </div>
+
+            {/* 4 data sources */}
+            <div className="grid sm:grid-cols-2 gap-3">
+              {[
+                {
+                  icon: "🛰️", badge: "MODIS NDVI", badgeColor: "bg-emerald-100 text-emerald-700",
+                  title: "ดาวเทียม NASA — ค่าความเขียวพืช",
+                  body: "NASA MODIS ถ่ายภาพทุก 16 วัน ความละเอียด 250m วัด NDVI (Normalized Difference Vegetation Index) ที่พิกัด lat/lon ของจังหวัด — ยิ่งเขียวมาก NDVI สูง",
+                  used: "→ iotConfidence",
+                },
+                {
+                  icon: "🗺️", badge: "MODIS Land Cover", badgeColor: "bg-emerald-100 text-emerald-700",
+                  title: "ดาวเทียม NASA — ประเภทพื้นที่",
+                  body: "MODIS จำแนกพื้นที่เป็น 17 ประเภท เช่น forest, cropland, urban, barren — ระบบ cross-validate ว่า project type ที่กรอกมาตรงกับพื้นที่จริงไหม",
+                  used: "→ governmentConfidence",
+                },
+                {
+                  icon: "☀️", badge: "NASA POWER", badgeColor: "bg-blue-100 text-blue-700",
+                  title: "NASA POWER — ข้อมูล climate ปี 2023",
+                  body: "ดึงค่าเฉลี่ยแสงอาทิตย์ (W/m²) และปริมาณฝน (mm/day) ทั้งปี 2023 ที่พิกัดจังหวัด ไม่ต้องใช้ API key — ฟรีและเปิดสาธารณะ",
+                  used: "→ historicalConfidence",
+                },
+                {
+                  icon: "🌦️", badge: "OpenWeatherMap", badgeColor: "bg-sky-100 text-sky-700",
+                  title: "OpenWeatherMap — สภาพอากาศวันนั้น",
+                  body: "ดึงอุณหภูมิ ความชื้น และเมฆปกคลุม ณ วันที่ submit โครงการ แสดงเป็นข้อมูล context เพิ่มเติม",
+                  used: "→ weather_*",
+                },
+              ].map(s => (
+                <div key={s.title} className="border border-gray-200 rounded-2xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-2xl">{s.icon}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${s.badgeColor}`}>{s.badge}</span>
+                  </div>
+                  <p className="font-semibold text-sm text-gray-900">{s.title}</p>
+                  <p className="text-xs text-gray-500 mt-1 leading-5">{s.body}</p>
+                  <p className="text-[10px] font-mono text-purple-500 mt-2">{s.used}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Formulas */}
+            <div className="border-t border-gray-100 pt-5 space-y-4">
+              <p className="font-bold text-gray-900 text-sm">สูตรคำนวณ</p>
+
+              <div className="space-y-3">
+                {[
+                  {
+                    label: "① Confidence Blend (ค่าเฉลี่ยถ่วงน้ำหนัก)",
+                    formula: "blend = iot×30% + government×30% + historical×25% + userInput×15%",
+                    note: "ยิ่งข้อมูลสอดคล้องกัน blend สูง",
+                  },
+                  {
+                    label: "② Risk Score (0–100, ยิ่งต่ำยิ่งดี)",
+                    formula: "risk = 100 − blend + (anomaly × 0.45) − (additionality × 0.2)",
+                    note: "blend ต่ำ + anomaly สูง = risk พุ่ง",
+                  },
+                  {
+                    label: "③ Approved Credits (จำนวนที่ได้จริง)",
+                    formula: "credits = min(requested,  selfReported × blend/100 × (100−risk)/100)",
+                    note: "risk 60 + blend 50 → ได้แค่ ~20% ของที่ขอ",
+                  },
+                  {
+                    label: "④ Required Stake (หลักประกัน)",
+                    formula: "stake = max(100,  approvedCredits × (0.4 + risk/100 × 1.8))  TCUT",
+                    note: "risk สูง → multiplier สูง → stake พุ่ง",
+                  },
+                ].map(f => (
+                  <div key={f.label} className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-xs font-semibold text-gray-700 mb-1.5">{f.label}</p>
+                    <p className="font-mono text-[11px] bg-white rounded-lg px-3 py-2 text-gray-800 overflow-x-auto">{f.formula}</p>
+                    <p className="text-[10px] text-gray-400 mt-1.5">{f.note}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Example */}
+            <div className="border-t border-gray-100 pt-5">
+              <p className="font-bold text-gray-900 text-sm mb-3">ตัวอย่างจริง — ChiangMai, Forest</p>
+              <div className="overflow-x-auto">
+                <table className="text-xs w-full">
+                  <thead>
+                    <tr className="text-left text-gray-400 border-b border-gray-100">
+                      <th className="pb-2 pr-4">Signal</th><th className="pb-2 pr-4">ค่า</th><th className="pb-2">มาจาก</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-gray-700 divide-y divide-gray-50">
+                    {[
+                      ["ndvi", "0.290", "🛰️ MODIS MOD13Q1 — ดาวเทียมจริง"],
+                      ["landCoverType", "13 (Urban)", "🛰️ MODIS MCD12Q1 — พิกัดชิ้กเชียงใหม่ตัวเมือง"],
+                      ["nasa_solarIrradiance", "4.83 W/m²", "NASA POWER 2023 avg"],
+                      ["nasa_precipitation", "3.51 mm/day", "NASA POWER 2023 avg"],
+                      ["iotConfidence", "63", "คำนวณจาก NDVI 0.290"],
+                      ["governmentConfidence", "20", "Forest claim vs Urban land → mismatch"],
+                      ["Risk Score", "~65", "สูงเพราะ LC mismatch"],
+                    ].map(([s, v, src]) => (
+                      <tr key={s}>
+                        <td className="py-1.5 pr-4 font-mono text-gray-600">{s}</td>
+                        <td className="py-1.5 pr-4 font-semibold">{v}</td>
+                        <td className="py-1.5 text-gray-400">{src}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[11px] text-amber-600 mt-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                ⚠️ ระบบใช้พิกัดตัวเมืองของจังหวัด (ไม่ใช่พิกัดโครงการจริง) ดังนั้นถ้าโครงการอยู่นอกเมือง ค่า Land Cover อาจไม่ตรง — เป็น limitation ของ prototype นี้
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* ── Token cheat sheet ── */}
         <section>
           <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">Token ในระบบ — คืออะไร?</p>

@@ -30,6 +30,21 @@ export async function assessProject(input: ProjectInput): Promise<RiskAssessment
     Math.round(input.selfReportedReduction * (confidenceBlend / 100) * ((100 - riskScore) / 100))
   );
   const approvedCredits = Math.min(input.requestedCredits, approvedReduction);
+
+  // TGO Thailand carbon sequestration rate limits (tCO2/rai/year)
+  const TGO_MAX_RATE: Record<string, number> = {
+    forest:   3.5,
+    mangrove: 6.0,
+    solar:    8.0,
+    biogas:   5.0,
+  };
+
+  const maxByTGO = Math.floor(input.landAreaRai * (TGO_MAX_RATE[input.projectType] ?? 3.5));
+  let tgoWarning: string | undefined;
+  if (input.requestedCredits > maxByTGO) {
+    tgoWarning = `ขอ ${input.requestedCredits} credits แต่พื้นที่ ${input.landAreaRai} ไร่ absorb ได้สูงสุด ${maxByTGO} tCO₂/ปี ตามมาตรฐาน TGO (${TGO_MAX_RATE[input.projectType]} tCO₂/ไร่/ปี)`;
+  }
+
   const stakeMultiplier = 0.4 + (riskScore / 100) * 1.8;
   const requiredStake = Math.round(Math.max(100, approvedCredits * stakeMultiplier));
 
@@ -52,6 +67,7 @@ export async function assessProject(input: ProjectInput): Promise<RiskAssessment
     requiredStake,
     recommendation,
     sourceHash,
+    tgoWarning,
     signals
   };
 }

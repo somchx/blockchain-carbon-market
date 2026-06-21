@@ -2,6 +2,8 @@ export type ProjectInput = {
   sellerName: string;
   projectName: string;
   province: string;
+  lat?: number;
+  lon?: number;
   landAreaRai: number;
   projectType: "forest" | "solar" | "biogas" | "mangrove";
   requestedCredits: number;
@@ -35,6 +37,7 @@ export type RiskAssessment = {
   requiredStake: number;
   recommendation: "approve" | "review" | "reject";
   sourceHash: string;
+  tgoWarning?: string;
   signals: DataSignals;
 };
 

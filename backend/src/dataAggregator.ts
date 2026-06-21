@@ -19,12 +19,88 @@ const MODIS_URL       = "https://modis.ornl.gov/rst/api/v1";
 
 // Thai province → WGS84 coordinates
 const PROVINCE_COORDS: Record<string, { lat: number; lon: number }> = {
-  ChiangMai:  { lat: 18.79, lon: 98.98  },
-  Bangkok:    { lat: 13.75, lon: 100.52 },
-  KhonKaen:  { lat: 16.43, lon: 102.84 },
-  SuratThani: { lat:  9.14, lon: 99.33  },
-  Chonburi:  { lat: 13.36, lon: 100.98 },
-  Phuket:    { lat:  7.88, lon: 98.39  },
+  // ภาคเหนือ
+  ChiangMai:       { lat: 18.79, lon:  98.98 },
+  ChiangRai:       { lat: 19.91, lon:  99.83 },
+  Lamphun:         { lat: 18.57, lon:  98.97 },
+  Lampang:         { lat: 18.29, lon:  99.49 },
+  Phrae:           { lat: 18.15, lon: 100.14 },
+  Nan:             { lat: 18.78, lon: 100.77 },
+  Phayao:          { lat: 19.17, lon: 100.20 },
+  MaeHongSon:      { lat: 19.30, lon:  97.97 },
+  Tak:             { lat: 16.88, lon:  99.13 },
+  Sukhothai:       { lat: 17.01, lon:  99.82 },
+  Uttaradit:       { lat: 17.63, lon: 100.10 },
+  Phitsanulok:     { lat: 16.83, lon: 100.26 },
+  Phichit:         { lat: 16.44, lon: 100.35 },
+  Phetchabun:      { lat: 16.42, lon: 101.16 },
+  KamphaengPhet:   { lat: 16.48, lon:  99.52 },
+  // ภาคกลาง
+  Bangkok:         { lat: 13.75, lon: 100.52 },
+  Nonthaburi:      { lat: 13.86, lon: 100.52 },
+  PathumThani:     { lat: 14.02, lon: 100.53 },
+  SamutPrakan:     { lat: 13.60, lon: 100.60 },
+  SamutSakhon:     { lat: 13.55, lon: 100.27 },
+  SamutSongkhram:  { lat: 13.41, lon: 100.00 },
+  NakhonPathom:    { lat: 13.82, lon: 100.04 },
+  SuphanBuri:      { lat: 14.47, lon: 100.12 },
+  SingBuri:        { lat: 14.89, lon: 100.40 },
+  AngThong:        { lat: 14.59, lon: 100.45 },
+  LopBuri:         { lat: 14.80, lon: 100.65 },
+  Saraburi:        { lat: 14.53, lon: 100.91 },
+  NakhonNayok:     { lat: 14.21, lon: 101.21 },
+  PrachinBuri:     { lat: 14.05, lon: 101.37 },
+  SaKaeo:          { lat: 13.82, lon: 102.06 },
+  Ayutthaya:       { lat: 14.36, lon: 100.59 },
+  ChaiNat:         { lat: 15.18, lon: 100.12 },
+  NakhonSawan:     { lat: 15.70, lon: 100.13 },
+  UthaithThani:    { lat: 15.38, lon: 100.03 },
+  Kanchanaburi:    { lat: 14.00, lon:  99.54 },
+  Ratchaburi:      { lat: 13.54, lon:  99.81 },
+  Phetchaburi:     { lat: 13.11, lon: 100.00 },
+  PrachuapKhiriKhan: { lat: 11.81, lon: 99.80 },
+  // ภาคตะวันออก
+  Chonburi:        { lat: 13.36, lon: 100.98 },
+  Rayong:          { lat: 12.68, lon: 101.28 },
+  Chanthaburi:     { lat: 12.61, lon: 102.11 },
+  Trat:            { lat: 12.24, lon: 102.51 },
+  Chachoengsao:    { lat: 13.69, lon: 101.07 },
+  // ภาคตะวันออกเฉียงเหนือ
+  KhonKaen:        { lat: 16.43, lon: 102.84 },
+  UdonThani:       { lat: 17.41, lon: 102.79 },
+  NongKhai:        { lat: 17.88, lon: 102.74 },
+  Loei:            { lat: 17.49, lon: 101.72 },
+  NongBuaLamphu:   { lat: 17.20, lon: 102.44 },
+  SakonNakhon:     { lat: 17.15, lon: 104.14 },
+  NakhonPhanom:    { lat: 17.39, lon: 104.77 },
+  Mukdahan:        { lat: 16.54, lon: 104.72 },
+  Kalasin:         { lat: 16.43, lon: 103.51 },
+  RoiEt:           { lat: 16.06, lon: 103.65 },
+  Yasothon:        { lat: 15.79, lon: 104.14 },
+  AmnatCharoen:    { lat: 15.86, lon: 104.63 },
+  UbonRatchathani: { lat: 15.23, lon: 104.85 },
+  SiSaKet:         { lat: 15.12, lon: 104.33 },
+  Surin:           { lat: 14.88, lon: 103.49 },
+  Buriram:         { lat: 14.99, lon: 103.10 },
+  NakhonRatchasima:{ lat: 14.97, lon: 102.10 },
+  Chaiyaphum:      { lat: 15.80, lon: 102.03 },
+  MahaSarakham:    { lat: 16.19, lon: 103.30 },
+  BuengKan:        { lat: 18.36, lon: 103.65 },
+  // ภาคใต้
+  SuratThani:      { lat:  9.14, lon:  99.33 },
+  Phuket:          { lat:  7.88, lon:  98.39 },
+  NakhonSiThammarat:{ lat: 8.43, lon:  99.96 },
+  Krabi:           { lat:  8.09, lon:  98.91 },
+  PhangNga:        { lat:  8.45, lon:  98.53 },
+  Ranong:          { lat:  9.96, lon:  98.61 },
+  Chumphon:        { lat: 10.49, lon:  99.18 },
+  Songkhla:        { lat:  7.19, lon: 100.59 },
+  Satun:           { lat:  6.62, lon: 100.07 },
+  Trang:           { lat:  7.56, lon:  99.61 },
+  Phatthalung:     { lat:  7.62, lon: 100.07 },
+  Pattani:         { lat:  6.86, lon: 101.25 },
+  Yala:            { lat:  6.54, lon: 101.28 },
+  Narathiwat:      { lat:  6.43, lon: 101.82 },
 };
 
 const DEFAULT_COORDS = { lat: 13.75, lon: 100.52 }; // Bangkok fallback
@@ -110,13 +186,14 @@ const landCoverCache = new Map<string, { data: LandCoverData;  expiresAt: number
 
 // ── API fetchers ──────────────────────────────────────────────────────────────
 
-async function fetchWeather(province: string): Promise<WeatherData> {
-  const cached = weatherCache.get(province);
+async function fetchWeather(province: string, overrideCoords?: { lat: number; lon: number }): Promise<WeatherData> {
+  const cacheKey = overrideCoords ? `${overrideCoords.lat},${overrideCoords.lon}` : province;
+  const cached = weatherCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.data;
 
   if (!OPENWEATHER_KEY) throw new Error("OPENWEATHER_API_KEY not set");
 
-  const { lat, lon } = PROVINCE_COORDS[province] ?? DEFAULT_COORDS;
+  const { lat, lon } = overrideCoords ?? PROVINCE_COORDS[province] ?? DEFAULT_COORDS;
   const url = `${OPENWEATHER_URL}?lat=${lat}&lon=${lon}&appid=${OPENWEATHER_KEY}&units=metric`;
   const res = await fetch(url, { signal: AbortSignal.timeout(8_000) });
   if (!res.ok) throw new Error(`OpenWeatherMap HTTP ${res.status}`);
@@ -132,16 +209,17 @@ async function fetchWeather(province: string): Promise<WeatherData> {
     cloudCover:  json.clouds.all,
     windSpeed:   json.wind.speed,
   };
-  weatherCache.set(province, { data, expiresAt: Date.now() + 10 * 60_000 });
-  console.log(`[weather]    ${province}: ${data.temperature}°C, ${data.humidity}% RH, ${data.cloudCover}% cloud`);
+  weatherCache.set(cacheKey, { data, expiresAt: Date.now() + 10 * 60_000 });
+  console.log(`[weather]    ${cacheKey}: ${data.temperature}°C, ${data.humidity}% RH, ${data.cloudCover}% cloud`);
   return data;
 }
 
-async function fetchNasaPower(province: string): Promise<NasaData> {
-  const cached = nasaCache.get(province);
+async function fetchNasaPower(province: string, overrideCoords?: { lat: number; lon: number }): Promise<NasaData> {
+  const cacheKey = overrideCoords ? `${overrideCoords.lat},${overrideCoords.lon}` : province;
+  const cached = nasaCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.data;
 
-  const { lat, lon } = PROVINCE_COORDS[province] ?? DEFAULT_COORDS;
+  const { lat, lon } = overrideCoords ?? PROVINCE_COORDS[province] ?? DEFAULT_COORDS;
   const params = new URLSearchParams({
     parameters: "ALLSKY_SFC_SW_DWN,PRECTOTCORR,T2M",
     community:  "RE",
@@ -165,18 +243,19 @@ async function fetchNasaPower(province: string): Promise<NasaData> {
     precipitation:   avg(p["PRECTOTCORR"] ?? {}),
     temperature:     avg(p["T2M"] ?? {}),
   };
-  nasaCache.set(province, { data, expiresAt: Date.now() + 24 * 3_600_000 });
-  console.log(`[nasa-power] ${province}: solar=${data.solarIrradiance.toFixed(2)} W/m², precip=${data.precipitation.toFixed(2)} mm/day`);
+  nasaCache.set(cacheKey, { data, expiresAt: Date.now() + 24 * 3_600_000 });
+  console.log(`[nasa-power] ${cacheKey}: solar=${data.solarIrradiance.toFixed(2)} W/m², precip=${data.precipitation.toFixed(2)} mm/day`);
   return data;
 }
 
 // MODIS MOD13Q1 — 250m NDVI, 16-day composite
 // Uses mid-year (DOY 177) to capture peak growing season in Thailand
-async function fetchNDVI(province: string): Promise<NdviData> {
-  const cached = ndviCache.get(province);
+async function fetchNDVI(province: string, overrideCoords?: { lat: number; lon: number }): Promise<NdviData> {
+  const cacheKey = overrideCoords ? `${overrideCoords.lat},${overrideCoords.lon}` : province;
+  const cached = ndviCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.data;
 
-  const { lat, lon } = PROVINCE_COORDS[province] ?? DEFAULT_COORDS;
+  const { lat, lon } = overrideCoords ?? PROVINCE_COORDS[province] ?? DEFAULT_COORDS;
   const url = `${MODIS_URL}/MOD13Q1/subset?latitude=${lat}&longitude=${lon}&startDate=A2023177&endDate=A2023177&kmAboveBelow=0&kmLeftRight=0`;
   const res = await fetch(url, { signal: AbortSignal.timeout(12_000) });
   if (!res.ok) throw new Error(`MODIS NDVI HTTP ${res.status}`);
@@ -192,18 +271,19 @@ async function fetchNDVI(province: string): Promise<NdviData> {
     ndvi:            rawNdvi / 10_000,   // scale: –1 to 1
     pixelReliability: rawRel ?? 3,
   };
-  ndviCache.set(province, { data, expiresAt: Date.now() + 24 * 3_600_000 });
-  console.log(`[modis-ndvi] ${province}: NDVI=${data.ndvi.toFixed(3)}, reliability=${data.pixelReliability}`);
+  ndviCache.set(cacheKey, { data, expiresAt: Date.now() + 24 * 3_600_000 });
+  console.log(`[modis-ndvi] ${cacheKey}: NDVI=${data.ndvi.toFixed(3)}, reliability=${data.pixelReliability}`);
   return data;
 }
 
 // MODIS MCD12Q1 — 500m Land Cover (IGBP), annual
 // Cross-validates whether the ground at the project's location matches the claimed project type
-async function fetchLandCover(province: string): Promise<LandCoverData> {
-  const cached = landCoverCache.get(province);
+async function fetchLandCover(province: string, overrideCoords?: { lat: number; lon: number }): Promise<LandCoverData> {
+  const cacheKey = overrideCoords ? `${overrideCoords.lat},${overrideCoords.lon}` : province;
+  const cached = landCoverCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.data;
 
-  const { lat, lon } = PROVINCE_COORDS[province] ?? DEFAULT_COORDS;
+  const { lat, lon } = overrideCoords ?? PROVINCE_COORDS[province] ?? DEFAULT_COORDS;
   const url = `${MODIS_URL}/MCD12Q1/subset?latitude=${lat}&longitude=${lon}&startDate=A2020001&endDate=A2020001&kmAboveBelow=0&kmLeftRight=0`;
   const res = await fetch(url, { signal: AbortSignal.timeout(12_000) });
   if (!res.ok) throw new Error(`MODIS Land Cover HTTP ${res.status}`);
@@ -217,9 +297,9 @@ async function fetchLandCover(province: string): Promise<LandCoverData> {
   if (typeof lcType !== "number") throw new Error("LC_Type1 band missing");
 
   const data: LandCoverData = { lcType, assessmentConfidence: assessmentConf };
-  landCoverCache.set(province, { data, expiresAt: Date.now() + 7 * 24 * 3_600_000 }); // 7 day TTL (changes slowly)
+  landCoverCache.set(cacheKey, { data, expiresAt: Date.now() + 7 * 24 * 3_600_000 }); // 7 day TTL (changes slowly)
   const catName = LC_CATEGORY[lcType] ?? "unknown";
-  console.log(`[modis-lc]   ${province}: LC_Type1=${lcType} (${catName}), confidence=${assessmentConf}%`);
+  console.log(`[modis-lc]   ${cacheKey}: LC_Type1=${lcType} (${catName}), confidence=${assessmentConf}%`);
   return data;
 }
 
@@ -307,6 +387,12 @@ function governmentFromLandCover(type: ProjectInput["projectType"], lc: LandCove
 
 export async function collectSignals(input: ProjectInput): Promise<RealSignals> {
   const scaleFactor = Math.min(input.landAreaRai / 500, 1);
+  // Use custom lat/lon from input if provided, otherwise fall back to province capital
+  const coordsFromProvince = PROVINCE_COORDS[input.province] ?? DEFAULT_COORDS;
+  const coords = (input.lat && input.lon)
+    ? { lat: input.lat, lon: input.lon }
+    : coordsFromProvince;
+  const overrideCoords = (input.lat && input.lon) ? coords : undefined;
 
   // Always-available signals (no API needed)
   const userInputConfidence = clamp(
@@ -320,10 +406,10 @@ export async function collectSignals(input: ProjectInput): Promise<RealSignals> 
 
   // All 4 API calls run concurrently — each can fail independently
   const [weatherResult, nasaResult, ndviResult, landCoverResult] = await Promise.allSettled([
-    fetchWeather(input.province),
-    fetchNasaPower(input.province),
-    fetchNDVI(input.province),
-    fetchLandCover(input.province),
+    fetchWeather(input.province, overrideCoords),
+    fetchNasaPower(input.province, overrideCoords),
+    fetchNDVI(input.province, overrideCoords),
+    fetchLandCover(input.province, overrideCoords),
   ]);
 
   const weather   = weatherResult.status   === "fulfilled" ? weatherResult.value   : null;

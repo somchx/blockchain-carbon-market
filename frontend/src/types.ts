@@ -5,6 +5,8 @@ export type ProjectForm = {
   sellerName: string;
   projectName: string;
   province: string;
+  lat?: number;
+  lon?: number;
   landAreaRai: number;
   projectType: ProjectType;
   requestedCredits: number;
