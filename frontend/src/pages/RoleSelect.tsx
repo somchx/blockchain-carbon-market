@@ -185,6 +185,21 @@ export default function RoleSelect() {
           </div>
         </section>
 
+        {/* ── Manual Banner ── */}
+        <Link
+          to="/manual"
+          className="flex items-center justify-between gap-4 rounded-2xl border-2 border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 px-6 py-4 hover:shadow-md hover:border-emerald-300 transition-all duration-150 group"
+        >
+          <div className="flex items-center gap-4">
+            <span className="text-3xl">📘</span>
+            <div>
+              <p className="font-bold text-gray-900 text-sm">ใหม่ต่อ Carbon Credit บน Blockchain?</p>
+              <p className="text-xs text-gray-500 mt-0.5">อ่านคู่มือการใช้งาน — อธิบายทีละขั้นตอน พร้อม diagram ภาษาเข้าใจง่าย</p>
+            </div>
+          </div>
+          <span className="text-emerald-600 font-semibold text-sm whitespace-nowrap group-hover:translate-x-1 transition-transform">อ่านคู่มือ →</span>
+        </Link>
+
         {/* ── Supporting Tools ── */}
         <section>
           <div className="mb-5">

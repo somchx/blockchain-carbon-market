@@ -22,6 +22,8 @@ export type DataSignals = {
   weather_cloudCover?: number;
   nasa_solarIrradiance?: number;
   nasa_precipitation?: number;
+  ndvi?: number | null;
+  landCoverType?: number | null;
   dataSource?: "real" | "fallback";
 };
 

@@ -1,364 +1,434 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { getContractConfig } from "../lib/web3";
 
-const setupSteps = [
+// ─── Flow lifecycle ────────────────────────────────────────────────────────────
+const FLOW = [
+  { icon: "🌱", label: "ยื่นโครงการ", sub: "Developer", color: "emerald" },
+  { icon: "🔍", label: "ตรวจสอบ", sub: "Verifier", color: "blue" },
+  { icon: "🔒", label: "วางหลักประกัน", sub: "Developer", color: "purple" },
+  { icon: "🌿", label: "ออก Credits", sub: "ระบบอัตโนมัติ", color: "teal" },
+  { icon: "🛒", label: "ซื้อ Credits", sub: "Buyer", color: "amber" },
+  { icon: "🔥", label: "ใช้ Offset", sub: "Buyer", color: "orange" },
+  { icon: "📜", label: "รับใบรับรอง", sub: "NFT", color: "rose" },
+];
+
+const FLOW_COLOR: Record<string, string> = {
+  emerald: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  blue:    "bg-blue-100 text-blue-700 border-blue-200",
+  purple:  "bg-purple-100 text-purple-700 border-purple-200",
+  teal:    "bg-teal-100 text-teal-700 border-teal-200",
+  amber:   "bg-amber-100 text-amber-700 border-amber-200",
+  orange:  "bg-orange-100 text-orange-700 border-orange-200",
+  rose:    "bg-rose-100 text-rose-700 border-rose-200",
+};
+
+// ─── Role steps ───────────────────────────────────────────────────────────────
+type Step = { icon: string; title: string; body: string; tag?: string; link?: string; linkLabel?: string };
+
+const DEV_STEPS: Step[] = [
   {
-    step: "0.1",
-    title: "ติดตั้ง MetaMask และเปิด Sepolia",
-    body: "ติดตั้ง MetaMask บน Chrome, Brave หรือ Edge แล้วสลับเครือข่ายเป็น Sepolia Testnet เพราะระบบนี้ deploy และทดสอบบนเครือข่ายนี้เป็นหลัก",
+    icon: "📋",
+    title: "กรอกข้อมูลโครงการ",
+    body: "ใส่ชื่อโครงการ, จังหวัด, ประเภทป่า/พลังงาน, พื้นที่ไร่ และปีที่ทำ ระบบจะดึงข้อมูลอากาศจริงจาก NASA มาคำนวณความเสี่ยงให้อัตโนมัติ",
+    tag: "ไม่ต้องใช้ MetaMask",
+    link: "/developer",
+    linkLabel: "ไปหน้า Developer",
   },
   {
-    step: "0.2",
-    title: "เตรียม Sepolia ETH สำหรับค่า gas",
-    body: "wallet ที่จะกด submit, approve, stake, buy, retire หรือ vote ต้องมี Sepolia ETH เล็กน้อยไว้ยืนยันธุรกรรมใน MetaMask",
+    icon: "📊",
+    title: "ดู Risk Score และจำนวนเครดิตที่ได้",
+    body: "ระบบคำนวณ Risk Score จากข้อมูล solar, ฝน และความน่าเชื่อถือของโครงการ ยิ่ง risk ต่ำ ยิ่งได้เครดิตมาก และวางหลักประกันน้อยลง",
+    tag: "ดูผลได้ทันที",
   },
   {
-    step: "0.3",
-    title: "เชื่อม wallet และตรวจ network badge",
-    body: "เมื่อเข้าแต่ละ dashboard ให้เชื่อม MetaMask แล้วดูที่แถบด้านบนว่าระบบอ่าน wallet และ network ถูกต้อง หากขึ้น wrong network ให้กดสลับเครือข่ายก่อน",
+    icon: "⛓️",
+    title: "บันทึกโครงการบน Blockchain",
+    body: "กด Submit On-Chain แล้วยืนยันใน MetaMask ข้อมูลโครงการจะถูกบันทึกถาวร ไม่มีใครลบหรือแก้ไขได้",
+    tag: "ต้องใช้ MetaMask",
   },
   {
-    step: "0.4",
-    title: "เตรียมไฟล์หลักฐานสำหรับ demo",
-    body: "ใช้ไฟล์ PDF หรือรูปภาพสำหรับ evidence upload ได้เลย เช่น ใบรับรองโครงการ, ภาพพื้นที่, เอกสารสรุปการลดคาร์บอน หรือ mock report สำหรับการนำเสนอ",
+    icon: "🔒",
+    title: "วางหลักประกัน (Stake)",
+    body: "วาง TCUT Token ค้ำประกันว่าข้อมูลที่ส่งมาเป็นความจริง ถ้าภายหลังถูกพิสูจน์ว่าเท็จ ระบบจะหัก token นี้ออก",
+    tag: "ต้องใช้ MetaMask",
+  },
+  {
+    icon: "📎",
+    title: "แนบหลักฐานบน IPFS",
+    body: "อัปโหลดเอกสาร PDF หรือรูปภาพโครงการ ระบบจะเก็บบน IPFS — เหมือน Google Drive ที่ไม่มีใครลบได้ และ Verifier จะเปิดดูได้ทุกเวลา",
+    tag: "ไม่ต้องใช้ MetaMask",
+  },
+  {
+    icon: "🌿",
+    title: "Mint และลงขาย Credits",
+    body: "หลัง Verifier อนุมัติแล้ว ตั้งราคาต่อเครดิตและกด Mint แล้ว Carbon Credit จะถูกสร้างเป็น Token และลงขายใน Marketplace ทันที",
+    tag: "ต้องใช้ MetaMask",
   },
 ];
 
-const expectedSignals = [
-  "Risk Score card แสดงค่าความเสี่ยงของโครงการ mangrove ในสุราษฎร์ธานี",
-  "เห็น climate fields เช่น nasa_solarIrradiance ประมาณ 4.92 และ nasa_precipitation ประมาณ 6.48",
-  "Data Source badge เป็น Real APIs เมื่อ NASA POWER ตอบกลับสำเร็จ",
-  "Required Stake ถูกคำนวณให้อัตโนมัติตาม risk/trust ของโครงการ",
-];
-
-const developerSteps = [
+const VER_STEPS: Step[] = [
   {
-    step: "1.1",
-    title: "Assess Project",
-    body: "เข้า Developer Dashboard แล้วกรอกข้อมูลโครงการ เช่น ชื่อโครงการ, จังหวัด, ประเภทโครงการ, requested credits, self-reported reduction และ vintage year จากนั้นกดประเมินความเสี่ยง",
+    icon: "📥",
+    title: "เปิดรายการโครงการที่รอตรวจ",
+    body: "เข้า Verifier Dashboard จะเห็นโครงการที่ Developer ส่งมา พร้อมข้อมูล risk, climate signals และหลักฐาน IPFS",
+    tag: "ต้องใช้ MetaMask",
+    link: "/verifier",
+    linkLabel: "ไปหน้า Verifier",
   },
   {
-    step: "1.2",
-    title: "ตรวจ Risk Score และ Required Stake",
-    body: "ระบบ backend จะดึง climate signals จาก NASA POWER และ OpenWeatherMap เมื่อมี key จากนั้นคำนวณ risk score, trust score, approved credits และ required stake ให้ทันที",
+    icon: "📂",
+    title: "เปิดหลักฐาน IPFS",
+    body: "กดเปิดไฟล์หลักฐานที่ Developer อัปโหลดไว้ ตรวจว่าเอกสารสอดคล้องกับข้อมูลที่กรอกมาหรือไม่",
+    tag: "ไม่ต้องใช้ MetaMask",
   },
   {
-    step: "1.3",
-    title: "Submit On-Chain",
-    body: "เมื่อผลประเมินโอเค ให้กด submit on-chain เพื่อเรียก submitProject() บันทึก metadata ของโครงการและ source data hash ลงบน blockchain",
+    icon: "📈",
+    title: "ดู Climate Signals",
+    body: "ระบบแสดงข้อมูลจาก NASA เช่น แสงแดดเฉลี่ย, ปริมาณฝน, ค่าความเชื่อมั่น ใช้ประกอบการตัดสินใจว่าโครงการมีความเป็นไปได้จริงไหม",
+    tag: "ดูได้เลย",
   },
   {
-    step: "1.4",
-    title: "Approve และ Deposit Stake",
-    body: "กด approve utility token ก่อนหนึ่งครั้ง แล้วจึงกด deposit stake เพื่อวางหลักประกันให้ครบตาม required stake หากข้อมูลภายหลังถูกพิสูจน์ว่า fraud ระบบสามารถใช้ stake นี้เป็นฐานสำหรับ slashing ได้",
-  },
-  {
-    step: "1.5",
-    title: "Upload Evidence ไป IPFS",
-    body: "ลากไฟล์ลงใน evidence panel ระบบจะอัปโหลดผ่าน Pinata และคืน CID/IPFS URL เพื่อใช้เป็นหลักฐานประกอบการตรวจสอบ ทั้ง verifier และ explorer จะเปิดลิงก์นี้ได้",
-  },
-  {
-    step: "1.6",
-    title: "Mint & List หลังผ่านการตรวจสอบ",
-    body: "หลัง verifier/assessor approve แล้ว action panel จะเปิดให้ตั้งราคาต่อเครดิตและกด mintAndListCredits() เพื่อ mint ERC-1155 แยกตาม projectId และลงขายใน marketplace",
+    icon: "✅",
+    title: "อนุมัติหรือปฏิเสธโครงการ",
+    body: "ถ้าโครงการผ่าน กด Approve เพื่อบันทึกผลลงใน Blockchain Developer จะเห็นสถานะเปลี่ยนทันทีและกลับไป Mint Credits ได้",
+    tag: "ต้องใช้ MetaMask",
   },
 ];
 
-const verifierSteps = [
+const BUYER_STEPS: Step[] = [
   {
-    step: "2.1",
-    title: "เปิด Pending Projects",
-    body: "เข้า Verifier Dashboard เพื่อดูโครงการที่ถูก submit และรอการประเมิน on-chain พร้อมสถานะ, risk bars และข้อมูลประกอบจาก backend",
+    icon: "🛒",
+    title: "เลือก Carbon Credit ที่ต้องการ",
+    body: "เข้า Marketplace ดู Carbon Credit ที่วางขายอยู่ แต่ละอันมีชื่อโครงการ, จังหวัด, ราคาต่อตัน และ Risk Badge บอกความน่าเชื่อถือ",
+    tag: "ไม่ต้องใช้ MetaMask",
+    link: "/buyer",
+    linkLabel: "ไปหน้า Buyer",
   },
   {
-    step: "2.2",
-    title: "ตรวจ signals และ evidence",
-    body: "ดู risk score, trust score, approved credits, climate-derived signals และเปิด evidence จาก IPFS เพื่อตรวจว่าข้อมูลโครงการสอดคล้องกับคำอธิบายที่ developer ส่งมาหรือไม่",
+    icon: "💳",
+    title: "ซื้อ Credits",
+    body: "กรอกจำนวนที่ต้องการ กด Buy Credits แล้วยืนยันใน MetaMask ระบบจะตัด TCUT Token และโอน Carbon Credit เข้ากระเป๋าให้อัตโนมัติ (Approve + Buy ในขั้นตอนเดียว)",
+    tag: "ต้องใช้ MetaMask",
   },
   {
-    step: "2.3",
-    title: "Approve หรือ Reject",
-    body: "ถ้าผ่าน ให้กด approve เพื่อเรียก assessProject() บน contract หากไม่ผ่านสามารถ reject ใน workflow ของหน้า verifier เพื่อหยุด flow ก่อน mint",
-  },
-  {
-    step: "2.4",
-    title: "ผลลัพธ์หลัง approve",
-    body: "เมื่อ assessment ถูกเขียน on-chain แล้ว project จะมี approved credits, trust score และ required stake พร้อมสำหรับให้ developer กลับไป mint และ list ในตลาด",
-  },
-];
-
-const buyerSteps = [
-  {
-    step: "3.1",
-    title: "Browse Marketplace",
-    body: "เข้า Buyer Marketplace เพื่อดู carbon credit cards ที่ถูก mint แล้ว โดยแต่ละ card จะแสดงชื่อโครงการ, จังหวัด, price per credit, risk badge และ trust badge",
-  },
-  {
-    step: "3.2",
-    title: "Approve Token แล้ว Buy Credits",
-    body: "กรอกจำนวนเครดิตที่ต้องการซื้อ จากนั้นกด approve utility token และซื้อผ่าน buyCredits() เมื่อธุรกรรมสำเร็จ token ERC-1155 จะถูกโอนเข้ากระเป๋าของผู้ซื้อ",
-  },
-  {
-    step: "3.3",
+    icon: "💼",
     title: "ดู Portfolio",
-    body: "แท็บ portfolio จะแสดงเครดิตที่ buyer ถืออยู่แยกตาม projectId ทำให้รู้ว่าถือ offset จากโครงการใดบ้างและเหลือปริมาณเท่าไร",
+    body: "แท็บ My Portfolio แสดงว่าคุณถือ Carbon Credit จากโครงการไหนบ้าง เท่าไหร่ตัน — เหมือนกระเป๋าหุ้น แต่เป็นเครดิตคาร์บอน",
+    tag: "ต้องใช้ MetaMask",
   },
   {
-    step: "3.4",
-    title: "Retire Credits และรับ NFT Certificate",
-    body: "หากต้องการใช้ offset จริง ให้กด retire จำนวนเครดิตที่ต้องการ ระบบจะสร้าง certificate, อัปโหลดไป IPFS, burn เครดิตจาก wallet และ mint ERC-721 certificate กลับมาเป็นหลักฐานถาวร",
+    icon: "🔥",
+    title: "Retire Credits เพื่อ Offset จริง",
+    body: "เมื่อต้องการใช้ offset จริง กด Retire Credits ระบบจะเผา token นั้นทิ้งและออก NFT ใบรับรองให้ ใบรับรองนี้เป็นหลักฐานถาวรว่าคุณ offset จริงกี่ตัน",
+    tag: "ต้องใช้ MetaMask",
   },
 ];
 
-const supportViews = [
+// ─── Concept cards ────────────────────────────────────────────────────────────
+const CONCEPTS = [
   {
-    title: "Traceability Explorer",
-    description: "ค้นหา project ID เพื่อดู timeline ของ ProjectSubmitted, ProjectAssessed, StakeDeposited, CreditsMinted, CreditsPurchased และ CreditsRetired แบบพร้อม tx hash",
-    to: "/explorer",
+    icon: "🪙",
+    term: "TCUT Token",
+    simple: "เงินในระบบ",
+    body: "ใช้ซื้อ Carbon Credit และวางหลักประกัน เหมือนเงินบาทในแพลตฟอร์มนี้ (ใช้บน Sepolia Testnet — ยังไม่มีมูลค่าจริง)",
+    color: "amber",
   },
   {
-    title: "DAO Governance Portal",
-    description: "ใช้ CGOV token เพื่อ delegate, สร้าง proposal, vote และ execute parameter changes ของระบบ เช่น assessor address หรือ platform fee",
-    to: "/dao",
+    icon: "🌿",
+    term: "Carbon Credit Token",
+    simple: "ตั๋วลดคาร์บอน",
+    body: "1 Credit = ลดคาร์บอน 1 ตัน ถือเป็น token ในกระเป๋า ขายต่อได้ หรือเผาทิ้งเพื่อ offset จริง",
+    color: "emerald",
   },
   {
-    title: "Oracle Page",
-    description: "ใช้ดู flow การดึงข้อมูล NASA POWER สำหรับ demo oracle integration ซึ่งปัจจุบันอยู่ในโหมด simulated fetch และ owner fulfill",
-    to: "/oracle",
+    icon: "📜",
+    term: "NFT Certificate",
+    simple: "ใบรับรองดิจิทัล",
+    body: "เมื่อ retire credits ระบบออกใบรับรองเป็น NFT เก็บบน IPFS ตลอดไป ใครก็ตรวจสอบได้ว่า offset จริง",
+    color: "rose",
   },
   {
-    title: "Admin Dashboard",
-    description: "ดูภาพรวมระบบ เช่น total projects, evidence count, risk distribution, leaderboard และ proposals ในหน้าเดียว",
-    to: "/admin",
-  },
-];
-
-const commonIssues = [
-  {
-    title: "MetaMask ขึ้น Wrong network",
-    body: "กดปุ่ม switch network ใน wallet bar แล้วเลือก Sepolia ให้ตรงกับ contract deployment ของ frontend",
-  },
-  {
-    title: "ธุรกรรมค้างหรือปุ่มหมุนไม่จบ",
-    body: "ตรวจใน MetaMask ว่ามี transaction pending อยู่หรือไม่ บางครั้งต้องรอ block confirm ก่อน หรือ reject รายการค้างแล้วกดใหม่เพียงครั้งเดียว",
-  },
-  {
-    title: "ซื้อหรือ stake ไม่ได้",
-    body: "มักเกิดจากยังไม่ได้ approve utility token, token balance ไม่พอ หรือ wallet ยังไม่ใช่ account ที่เกี่ยวข้องกับ action นั้น",
-  },
-  {
-    title: "อัปโหลด evidence ไม่สำเร็จ",
-    body: "ตรวจว่าไฟล์เป็น PDF, JPG, PNG หรือ WEBP และขนาดไม่เกินที่ backend กำหนด รวมถึงเช็กว่าการเชื่อมต่อ Pinata และ backend ยังทำงานปกติ",
-  },
-  {
-    title: "ไม่เห็นโปรเจกต์ใน Marketplace",
-    body: "โปรเจกต์จะขึ้นขายได้ก็ต่อเมื่อผ่าน assessment, วาง stake ครบ, และ developer กด mint & list แล้วเท่านั้น",
+    icon: "🗳️",
+    term: "CGOV Token",
+    simple: "สิทธิ์โหวต",
+    body: "ใช้โหวตเปลี่ยนกฎของระบบ เช่น ใครเป็น Verifier, ค่าธรรมเนียมเท่าไหร่ เหมือนหุ้นที่มีสิทธิ์ออกเสียง",
+    color: "purple",
   },
 ];
 
-const faq = [
-  "ระบบนี้ใช้ utility token ของแพลตฟอร์มสำหรับ demo flow ปัจจุบัน ยังไม่ใช่ stablecoin production",
-  "ข้อมูล climate ตอนนี้พึ่ง NASA POWER เป็นหลัก และใช้ OpenWeatherMap เมื่อมี API key พร้อมใช้งาน",
-  "Satellite NDVI, registry ภาครัฐ และ PWA ยังเป็น planned scope ยังไม่ใช่ของที่เชื่อมจริงทั้งหมดใน repo ตอนนี้",
-  "ทุก transaction สำคัญสามารถตรวจสอบต่อบน explorer และ Etherscan ได้จาก tx hash ที่หน้า dashboard แสดง",
+const CONCEPT_COLOR: Record<string, { bg: string; border: string; badge: string; text: string }> = {
+  amber:   { bg: "bg-amber-50",   border: "border-amber-200",   badge: "bg-amber-100 text-amber-700",   text: "text-amber-900" },
+  emerald: { bg: "bg-emerald-50", border: "border-emerald-200", badge: "bg-emerald-100 text-emerald-700", text: "text-emerald-900" },
+  rose:    { bg: "bg-rose-50",    border: "border-rose-200",    badge: "bg-rose-100 text-rose-700",     text: "text-rose-900" },
+  purple:  { bg: "bg-purple-50",  border: "border-purple-200",  badge: "bg-purple-100 text-purple-700", text: "text-purple-900" },
+};
+
+// ─── Issues ───────────────────────────────────────────────────────────────────
+const ISSUES = [
+  { q: "MetaMask ขึ้น Wrong Network", a: "กดปุ่ม Switch Network ในแถบด้านบนของหน้า แล้วเลือก Sepolia" },
+  { q: "กด Buy แล้วขึ้น Error", a: "ตรวจว่า TCUT balance พอไหม — ดูยอดมุมขวาบนของหน้า Buyer" },
+  { q: "ปุ่มค้าง หมุนไม่จบ", a: "เปิด MetaMask ดูว่ามี transaction รอ confirm อยู่ไหม ถ้ามีให้ confirm หรือ cancel ก่อน" },
+  { q: "Marketplace ว่าง ไม่เห็น Credits", a: "โครงการต้องผ่านขั้นตอน Submit → Verify → Stake → Mint ครบก่อน ถึงจะปรากฏในตลาด" },
+  { q: "อัปโหลดหลักฐานไม่ได้", a: "รองรับ PDF, JPG, PNG ขนาดไม่เกิน 10MB และ backend ต้องออนไลน์อยู่" },
 ];
+
+// ─── Component ────────────────────────────────────────────────────────────────
+type Role = "developer" | "verifier" | "buyer";
 
 export default function ManualPage() {
-  const config = getContractConfig();
+  const [role, setRole] = useState<Role>("developer");
+  const [openIssue, setOpenIssue] = useState<number | null>(null);
+
+  const steps = role === "developer" ? DEV_STEPS : role === "verifier" ? VER_STEPS : BUYER_STEPS;
+
+  const roleConfig = {
+    developer: { label: "🌱 Developer", sub: "ยื่นโครงการและสร้างเครดิต", active: "bg-emerald-600 text-white", inactive: "bg-white text-gray-600 hover:bg-emerald-50" },
+    verifier:  { label: "🔍 Verifier",  sub: "ตรวจสอบและอนุมัติ",          active: "bg-blue-600 text-white",    inactive: "bg-white text-gray-600 hover:bg-blue-50" },
+    buyer:     { label: "🛒 Buyer",     sub: "ซื้อและใช้ Carbon Credits",   active: "bg-amber-500 text-white",   inactive: "bg-white text-gray-600 hover:bg-amber-50" },
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white shadow-sm">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+
+      {/* ── Header ── */}
+      <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/95 backdrop-blur shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-600 text-white p-2 rounded-xl">📘</div>
+            <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white text-lg">📘</div>
             <div>
-              <h1 className="text-base font-bold text-gray-900 leading-none">คู่มือการใช้งาน</h1>
-              <p className="text-xs text-gray-500">Thailand Carbon Market · ทีละขั้นตอน</p>
+              <p className="text-sm font-bold text-gray-900 leading-none">คู่มือการใช้งาน</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">Thailand Carbon Market · ฉบับเข้าใจง่าย</p>
             </div>
           </div>
-          <Link
-            to="/"
-            className="text-sm bg-white text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 font-medium transition-colors"
-          >
-            กลับหน้าหลัก
+          <Link to="/" className="text-sm text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">
+            ← หน้าหลัก
           </Link>
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-5 text-gray-700">
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
-          <h2 className="text-base font-bold text-gray-900">ระบบนี้คืออะไร</h2>
-          <p className="text-sm leading-7 text-gray-600">
-            ระบบนี้คือแพลตฟอร์มต้นแบบสำหรับออก, ซื้อขาย และ retire carbon credits บน blockchain โดยมี
-            การประเมินความเสี่ยงจาก climate data, การเก็บหลักฐานบน IPFS, marketplace สำหรับซื้อขาย,
-            และ NFT certificate สำหรับยืนยันการ offset จริง
+      <main className="max-w-4xl mx-auto px-4 py-8 space-y-10">
+
+        {/* ── What is this ── */}
+        <section className="bg-gradient-to-br from-emerald-50 via-white to-teal-50 border border-emerald-100 rounded-3xl p-7 shadow-sm">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-emerald-500 mb-2">ระบบนี้คืออะไร</p>
+          <h2 className="text-2xl font-bold text-gray-900 leading-snug">
+            ตลาดซื้อขาย Carbon Credit<br />
+            <span className="text-emerald-600">ที่ตรวจสอบได้ทุกขั้นตอน</span>
+          </h2>
+          <p className="mt-3 text-sm leading-7 text-gray-500 max-w-2xl">
+            แพลตฟอร์มนี้ช่วยให้โครงการลดคาร์บอน (เช่น ปลูกป่า, พลังงานสะอาด) สามารถออก Carbon Credit เป็น Token ดิจิทัล
+            แล้วขายให้กับบริษัทที่อยากลด carbon footprint — ทุกขั้นตอนถูกบันทึกถาวร ไม่มีใครแก้ไขหรือปลอมแปลงได้
           </p>
-          <div className="grid sm:grid-cols-3 gap-2 mt-3 text-xs">
-            <div className="border rounded-lg px-3 py-2 bg-emerald-50 border-emerald-200 text-emerald-700">
-              <p className="font-bold">Project Developer</p>
-              <p className="opacity-80">ส่งโครงการ, stake, upload evidence, mint & list</p>
-            </div>
-            <div className="border rounded-lg px-3 py-2 bg-blue-50 border-blue-200 text-blue-700">
-              <p className="font-bold">Verifier / Assessor</p>
-              <p className="opacity-80">ตรวจ risk signals และ approve assessment บน chain</p>
-            </div>
-            <div className="border rounded-lg px-3 py-2 bg-amber-50 border-amber-200 text-amber-700">
-              <p className="font-bold">Buyer</p>
-              <p className="opacity-80">ซื้อ credits, ถือใน portfolio, retire และรับ certificate</p>
-            </div>
-          </div>
-          <div className="text-xs border rounded-lg px-3 py-2 bg-gray-50 border-gray-200 text-gray-600">
-            Network ที่ใช้งานหลักตอนนี้คือ <strong>{config.rpcLabel}</strong> และ flow สำคัญทั้งหมดใช้ MetaMask ในการยืนยันธุรกรรม
+
+          {/* Why blockchain — simple analogy */}
+          <div className="mt-5 grid sm:grid-cols-3 gap-3">
+            {[
+              { icon: "🔍", title: "โปร่งใส 100%", body: "ทุกการซื้อขายมี receipt ถาวร ตรวจสอบได้ตลอดเวลา" },
+              { icon: "🤝", title: "ไม่มีตัวกลาง", body: "กฎทำงานอัตโนมัติ ไม่ต้องรอ broker หรือ admin" },
+              { icon: "🛡️", title: "กันปลอม", body: "ใบรับรอง offset เป็น NFT ไม่มีใครสร้างปลอมได้" },
+            ].map(c => (
+              <div key={c.title} className="bg-white border border-gray-200 rounded-2xl p-4">
+                <p className="text-2xl mb-2">{c.icon}</p>
+                <p className="text-sm font-semibold text-gray-900">{c.title}</p>
+                <p className="text-xs text-gray-500 mt-1 leading-5">{c.body}</p>
+              </div>
+            ))}
           </div>
         </section>
 
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
-          <h2 className="text-base font-bold text-gray-900">ขั้นที่ 0 — เตรียมความพร้อมก่อนเริ่ม</h2>
-          {setupSteps.map((item) => (
-            <div key={item.step} className="flex gap-3">
-              <div className="shrink-0 w-10 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center">
-                {item.step}
-              </div>
-              <div className="text-sm leading-relaxed">
-                <p className="font-semibold text-gray-900">{item.title}</p>
-                <div className="text-gray-600 mt-0.5 leading-7">{item.body}</div>
-              </div>
-            </div>
-          ))}
-        </section>
+        {/* ── Lifecycle flow ── */}
+        <section>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">วงจรชีวิตของ Carbon Credit</p>
 
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
-          <h2 className="text-base font-bold text-gray-900">ขั้นที่ 1 — Developer ส่งโครงการและเตรียมเครดิต</h2>
-          {developerSteps.map((item) => (
-            <div key={item.step} className="flex gap-3">
-              <div className="shrink-0 w-10 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center justify-center">
-                {item.step}
-              </div>
-              <div className="text-sm leading-relaxed">
-                <p className="font-semibold text-gray-900">{item.title}</p>
-                <div className="text-gray-600 mt-0.5 leading-7">{item.body}</div>
-              </div>
-            </div>
-          ))}
-          <div className="text-xs border rounded-lg px-3 py-2 bg-emerald-50 border-emerald-200 text-emerald-800">
-            ลำดับที่ควรทำจริงบนหน้า Developer คือ: Assess Project → Submit On-Chain → Approve PLAT → Deposit Stake → Upload Evidence → กลับมารอ Verifier approve
-          </div>
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-            <p className="text-sm font-semibold text-gray-900">สิ่งที่ควรเห็นหลังจากกด Assess Project</p>
-            <ul className="list-disc ml-5 mt-2 text-sm text-gray-600 space-y-1 leading-6">
-              {expectedSignals.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="rounded-xl border border-gray-200 bg-blue-50 p-4">
-            <p className="text-sm font-semibold text-gray-900">สิ่งที่ควรเห็นหลังจากกด Submit / Stake / Upload</p>
-            <ul className="list-disc ml-5 mt-2 text-sm text-gray-600 space-y-1 leading-6">
-              <li>หลัง Submit On-Chain จะมีข้อความยืนยันว่า submitted เป็น Project #X พร้อม tx hash</li>
-              <li>หลัง Approve PLAT จะมีข้อความว่าอนุมัติ token allowance สำเร็จ</li>
-              <li>หลัง Deposit Stake สถานะโครงการจะพร้อมเข้าสู่ช่วงรอ verifier approve</li>
-              <li>หลัง Upload Evidence จะได้ IPFS URL ที่เปิดดูไฟล์จาก browser ได้ทันที</li>
-            </ul>
-          </div>
-        </section>
-
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
-          <h2 className="text-base font-bold text-gray-900">ขั้นที่ 2 — Verifier ตรวจสอบและอนุมัติ</h2>
-          {verifierSteps.map((item) => (
-            <div key={item.step} className="flex gap-3">
-              <div className="shrink-0 w-10 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center">
-                {item.step}
-              </div>
-              <div className="text-sm leading-relaxed">
-                <p className="font-semibold text-gray-900">{item.title}</p>
-                <div className="text-gray-600 mt-0.5 leading-7">{item.body}</div>
-              </div>
-            </div>
-          ))}
-          <div className="rounded-xl border border-gray-200 bg-blue-50 p-4">
-            <p className="text-sm font-semibold text-gray-900">สิ่งที่ verifier ควรชี้ให้ผู้ชมดู</p>
-            <ul className="list-disc ml-5 mt-2 text-sm text-gray-600 space-y-1 leading-6">
-              <li>Pending project ที่เพิ่ง submit ปรากฏในรายการรอตรวจสอบ</li>
-              <li>Risk bar chart แสดง confidence หลายมิติ เช่น IoT, Government, Historical และ anomaly</li>
-              <li>Evidence link เปิดไฟล์บน IPFS ได้จริง</li>
-              <li>หลัง approve สถานะโครงการเปลี่ยน และ developer จะกลับไปเห็น action panel สำหรับ mint</li>
-            </ul>
-          </div>
-        </section>
-
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
-          <h2 className="text-base font-bold text-gray-900">ขั้นที่ 3 — Buyer ซื้อและ retire เครดิต</h2>
-          {buyerSteps.map((item) => (
-            <div key={item.step} className="flex gap-3">
-              <div className="shrink-0 w-10 h-6 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center">
-                {item.step}
-              </div>
-              <div className="text-sm leading-relaxed">
-                <p className="font-semibold text-gray-900">{item.title}</p>
-                <div className="text-gray-600 mt-0.5 leading-7">{item.body}</div>
-              </div>
-            </div>
-          ))}
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-            <p className="text-sm font-semibold text-gray-900">สิ่งที่ควรเห็นหลัง Buy และ Retire</p>
-            <ul className="list-disc ml-5 mt-2 text-sm text-gray-600 space-y-1 leading-6">
-              <li>หลัง Buy สำเร็จ buyer จะถือ 10 credits ของ Project #X ใน portfolio</li>
-              <li>หลัง Retire 5 credits ระบบจะสร้าง certificate, อัปโหลดขึ้น IPFS, และ mint NFT certificate ให้ buyer</li>
-              <li>จำนวนเครดิตคงเหลือใน portfolio จะลดลงตามที่ retire ไปจริง</li>
-              <li>ลิงก์ certificate ควรเปิด SVG certificate ที่มีชื่อโครงการและจำนวนเครดิตที่ใช้ offset</li>
-            </ul>
-          </div>
-        </section>
-
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
-          <h2 className="text-base font-bold text-gray-900">ขั้นที่ 4 — หน้าประกอบสำหรับตรวจสอบและบริหารระบบ</h2>
-          <div className="space-y-3">
-            {supportViews.map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                className="flex items-start justify-between gap-3 border border-gray-200 bg-gray-50 rounded-xl px-4 py-3 hover:bg-white hover:border-gray-300 transition-colors"
-              >
-                <div>
-                  <p className="font-semibold text-gray-900">{item.title}</p>
-                  <p className="text-sm text-gray-600 leading-6 mt-1">{item.description}</p>
+          {/* Flow diagram */}
+          <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm overflow-x-auto">
+            <div className="flex items-start gap-1 min-w-max mx-auto w-fit">
+              {FLOW.map((step, i) => (
+                <div key={step.label} className="flex items-start">
+                  <div className="flex flex-col items-center gap-2 w-20">
+                    <div className={`w-14 h-14 rounded-2xl border-2 flex items-center justify-center text-2xl shadow-sm ${FLOW_COLOR[step.color]}`}>
+                      {step.icon}
+                    </div>
+                    <p className="text-xs font-semibold text-gray-800 text-center leading-4">{step.label}</p>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${FLOW_COLOR[step.color]}`}>
+                      {step.sub}
+                    </span>
+                  </div>
+                  {i < FLOW.length - 1 && (
+                    <div className="flex items-center mt-5 mx-0.5">
+                      <div className="w-6 h-0.5 bg-gray-300" />
+                      <div className="w-0 h-0 border-t-4 border-t-transparent border-b-4 border-b-transparent border-l-8 border-l-gray-300" />
+                    </div>
+                  )}
                 </div>
-                <span className="text-gray-300">→</span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Role Tabs + Steps ── */}
+        <section>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">คู่มือตามบทบาท</p>
+
+          {/* Tab buttons */}
+          <div className="flex gap-2 mb-6 flex-wrap">
+            {(["developer", "verifier", "buyer"] as Role[]).map(r => (
+              <button
+                key={r}
+                onClick={() => setRole(r)}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all shadow-sm ${
+                  role === r ? roleConfig[r].active + " border-transparent shadow-md" : "border-gray-200 " + roleConfig[r].inactive
+                }`}
+              >
+                {roleConfig[r].label}
+                <span className={`ml-2 text-[11px] font-normal ${role === r ? "opacity-80" : "text-gray-400"}`}>
+                  {roleConfig[r].sub}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Steps */}
+          <div className="space-y-3">
+            {steps.map((step, i) => (
+              <div key={i} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm flex gap-4">
+                {/* Number + icon */}
+                <div className="flex flex-col items-center gap-1.5 shrink-0">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl border-2 ${
+                    role === "developer" ? "bg-emerald-50 border-emerald-200" :
+                    role === "verifier"  ? "bg-blue-50 border-blue-200" :
+                                          "bg-amber-50 border-amber-200"
+                  }`}>
+                    {step.icon}
+                  </div>
+                  <span className={`text-[10px] font-bold ${
+                    role === "developer" ? "text-emerald-400" :
+                    role === "verifier"  ? "text-blue-400" : "text-amber-400"
+                  }`}>
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2 flex-wrap">
+                    <p className="font-semibold text-gray-900 text-sm">{step.title}</p>
+                    {step.tag && (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${
+                        step.tag.includes("MetaMask")
+                          ? "bg-orange-100 text-orange-700"
+                          : "bg-gray-100 text-gray-500"
+                      }`}>
+                        {step.tag.includes("MetaMask") ? "🦊 " : ""}{step.tag}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1.5 leading-6">{step.body}</p>
+                  {step.link && (
+                    <Link
+                      to={step.link}
+                      className={`inline-flex items-center gap-1 mt-3 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                        role === "developer" ? "bg-emerald-600 text-white hover:bg-emerald-700" :
+                        role === "verifier"  ? "bg-blue-600 text-white hover:bg-blue-700" :
+                                              "bg-amber-500 text-white hover:bg-amber-600"
+                      }`}
+                    >
+                      {step.linkLabel} →
+                    </Link>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Token cheat sheet ── */}
+        <section>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">Token ในระบบ — คืออะไร?</p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {CONCEPTS.map(c => {
+              const cl = CONCEPT_COLOR[c.color];
+              return (
+                <div key={c.term} className={`rounded-2xl border p-5 ${cl.bg} ${cl.border}`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-3xl">{c.icon}</span>
+                    <div>
+                      <p className={`text-xs font-bold ${cl.text} opacity-60 uppercase tracking-wide`}>{c.term}</p>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cl.badge}`}>= {c.simple}</span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 leading-6">{c.body}</p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* ── Tools quick links ── */}
+        <section>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">เครื่องมือในระบบ</p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {[
+              { to: "/explorer", icon: "🔭", title: "Traceability Explorer", body: "ค้นหาโครงการ แล้วดูว่า Credit นั้นผ่านขั้นตอนอะไรมาบ้าง มี tx hash พิสูจน์ได้ทุกก้าว", color: "sky" },
+              { to: "/dao",      icon: "🏛️", title: "DAO Governance",        body: "โหวตเปลี่ยนกฎของระบบ เช่น ใครเป็น Verifier หรือค่าธรรมเนียมเท่าไหร่ ใช้ CGOV token", color: "violet" },
+              { to: "/oracle",   icon: "🌤️", title: "Oracle — NASA Data",   body: "ดูข้อมูล climate จาก NASA POWER ที่ระบบใช้คำนวณ Risk Score ของแต่ละโครงการ", color: "amber" },
+              { to: "/admin",    icon: "📊", title: "Admin Dashboard",       body: "ภาพรวมระบบ — จำนวนโครงการ, สถิติ risk, leaderboard ผู้ตรวจสอบ และสถานะ DAO", color: "gray" },
+            ].map(t => (
+              <Link
+                key={t.to}
+                to={t.to}
+                className="group flex gap-4 bg-white border border-gray-200 rounded-2xl p-4 hover:shadow-md hover:border-gray-300 transition-all"
+              >
+                <span className="text-3xl shrink-0">{t.icon}</span>
+                <div>
+                  <p className="font-semibold text-sm text-gray-900 group-hover:text-emerald-700 transition-colors">{t.title}</p>
+                  <p className="text-xs text-gray-500 mt-1 leading-5">{t.body}</p>
+                </div>
               </Link>
             ))}
           </div>
         </section>
 
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
-          <h2 className="text-base font-bold text-gray-900">แก้ปัญหาที่พบบ่อย</h2>
-          <div className="space-y-3">
-            {commonIssues.map((item) => (
-              <div key={item.title} className="text-sm">
-                <p className="font-semibold text-gray-900">• {item.title}</p>
-                <p className="text-gray-600 ml-3 leading-6">{item.body}</p>
+        {/* ── Troubleshoot accordion ── */}
+        <section>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">แก้ปัญหาที่พบบ่อย</p>
+          <div className="space-y-2">
+            {ISSUES.map((item, i) => (
+              <div key={i} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                <button
+                  onClick={() => setOpenIssue(openIssue === i ? null : i)}
+                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-base">❓</span>
+                    <p className="text-sm font-semibold text-gray-800">{item.q}</p>
+                  </div>
+                  <span className={`text-gray-400 text-lg transition-transform ${openIssue === i ? "rotate-180" : ""}`}>▾</span>
+                </button>
+                {openIssue === i && (
+                  <div className="px-5 pb-4 flex gap-3">
+                    <span className="text-emerald-500 text-base shrink-0">✅</span>
+                    <p className="text-sm text-gray-600 leading-6">{item.a}</p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </section>
 
-        <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-3">
-          <h2 className="text-base font-bold text-gray-900">ข้อควรรู้</h2>
-          <ul className="list-disc ml-5 text-sm space-y-1 text-gray-600 leading-7">
-            {faq.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </section>
-
-        <div className="text-center">
+        {/* ── CTA ── */}
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-3xl p-7 text-white text-center shadow-lg">
+          <p className="text-2xl mb-2">🌿</p>
+          <h3 className="text-lg font-bold">พร้อมเริ่มใช้งานแล้วใช่ไหม?</h3>
+          <p className="text-sm opacity-80 mt-1 mb-5">เชื่อม MetaMask แล้วเลือกบทบาทของคุณได้เลย</p>
           <Link
             to="/"
-            className="inline-flex bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 font-medium text-sm transition-colors"
+            className="inline-flex items-center gap-2 bg-white text-emerald-700 font-semibold text-sm px-6 py-2.5 rounded-xl hover:bg-emerald-50 transition-colors shadow-sm"
           >
-            กลับไปเริ่มใช้งาน
+            เริ่มใช้งาน →
           </Link>
         </div>
+
       </main>
     </div>
   );

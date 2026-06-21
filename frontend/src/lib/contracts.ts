@@ -3,6 +3,7 @@ export const carbonMarketAbi = [
   "function treasury() view returns (address)",
   "function utilityToken() view returns (address)",
   "function carbonToken() view returns (address)",
+  "function nextProjectId() view returns (uint256)",
   "function submitProject(string metadataUri, string sourceDataHash, uint256 requestedCredits, uint256 vintageYear) returns (uint256)",
   "function assessProject(uint256 projectId, uint256 approvedCredits, uint256 riskScore, uint256 trustScore, uint256 requiredStake)",
   "function depositProjectStake(uint256 projectId, uint256 amount)",

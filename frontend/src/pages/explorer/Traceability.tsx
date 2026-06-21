@@ -1,4 +1,4 @@
-import { Contract, formatUnits, JsonRpcProvider } from "ethers";
+import { Contract, formatUnits, Interface, JsonRpcProvider } from "ethers";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import WalletBar from "../../components/WalletBar";
@@ -151,7 +151,7 @@ export default function TraceabilityExplorer() {
     setFoundId(pid);
 
     try {
-      const rpcUrl = import.meta.env.VITE_CHAIN_RPC_URL ?? "http://127.0.0.1:8545";
+      const rpcUrl = import.meta.env.VITE_CHAIN_RPC_URL ?? "https://sepolia.gateway.tenderly.co";
       const provider = new JsonRpcProvider(rpcUrl);
 
       if (!config.marketAddress) throw new Error("VITE_MARKET_ADDRESS not configured");
@@ -178,19 +178,45 @@ export default function TraceabilityExplorer() {
         });
       }
 
-      // Query all events by projectId
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mktFilters = (market as any).filters;
-      const allResults = await Promise.all(
-        EVENT_NAMES.map(name =>
-          market.queryFilter(mktFilters[name](pidBig), 0).catch(() => [] as unknown[])
-        )
-      );
+      // Query all events in ONE eth_getLogs call (no topic filter = no rate limit problem).
+      // Decode and filter client-side. Contract deployed at block ~11_104_000 on Sepolia,
+      // so LOOKBACK of 200k blocks is more than enough.
+      const latestBlock = await provider.getBlockNumber();
+      const CHUNK = 49_999;
+      const LOOKBACK = 200_000;
+      const fromBlock = Math.max(0, latestBlock - LOOKBACK);
 
+      const iface = new Interface(carbonMarketAbi as unknown as string[]);
+
+      // Collect raw logs sequentially chunk by chunk (avoids parallel rate-limit bursts)
+      const rawLogs: Awaited<ReturnType<typeof provider.getLogs>> = [];
+      for (let start = fromBlock; start <= latestBlock; start += CHUNK) {
+        const end = Math.min(start + CHUNK - 1, latestBlock);
+        try {
+          const chunk = await provider.getLogs({ address: config.marketAddress!, fromBlock: start, toBlock: end });
+          rawLogs.push(...chunk);
+        } catch {
+          // skip chunk on RPC error
+        }
+      }
+
+      // Decode and keep only logs for this projectId
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const allLogs = (allResults.flat() as any[]).sort(
-        (a, b) => (a.blockNumber as number) - (b.blockNumber as number)
-      );
+      const allLogs: any[] = [];
+      for (const log of rawLogs) {
+        try {
+          const parsed = iface.parseLog({ topics: [...log.topics], data: log.data });
+          if (!parsed) continue;
+          // First indexed arg is always projectId for all our events
+          const logPid = parsed.args[0];
+          if (BigInt(logPid) !== pidBig) continue;
+          allLogs.push({ ...log, fragment: parsed.fragment, args: parsed.args });
+        } catch {
+          // unparseable log — skip
+        }
+      }
+
+      allLogs.sort((a, b) => (a.blockNumber as number) - (b.blockNumber as number));
 
       // Block timestamps in batch
       const uniqueBlocks = [...new Set(allLogs.map(l => l.blockNumber as number))];

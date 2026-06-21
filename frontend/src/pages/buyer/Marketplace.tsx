@@ -1,8 +1,8 @@
-import { formatUnits, parseEther } from "ethers";
+import { Contract, formatUnits, JsonRpcProvider, MaxUint256, parseEther } from "ethers";
+import { carbonCreditAbi, erc20Abi } from "../../lib/contracts";
 import { useEffect, useState } from "react";
 import WalletBar from "../../components/WalletBar";
 import { getConnectedWallet, getContractConfig, getContracts, readWalletBalances, type WalletState } from "../../lib/web3";
-import { loadProjectMap } from "../../lib/storage";
 import type { StoredProject, OnChainProject } from "../../types";
 
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000/api";
@@ -38,6 +38,7 @@ type ListedProject = {
 
 export default function BuyerMarketplace() {
   const [listedProjects, setListedProjects] = useState<ListedProject[]>([]);
+  const [allOnChainProjects, setAllOnChainProjects] = useState<ListedProject[]>([]);
   const [wallet, setWallet] = useState<WalletState | null>(null);
   const [balance, setBalance] = useState("—");
   const [buyAmount, setBuyAmount] = useState<Record<string, number>>({});
@@ -48,28 +49,43 @@ export default function BuyerMarketplace() {
   const [retireAmount, setRetireAmount] = useState<Record<string, number>>({});
   const [certLinks, setCertLinks] = useState<Record<string, string>>({});
   const [pageLoading, setPageLoading] = useState(true);
+  const [cardMsg, setCardMsg] = useState<Record<string, string>>({});
+  const [portfolioError, setPortfolioError] = useState("");
+  const [portfolioDebug, setPortfolioDebug] = useState("");
 
   async function loadData() {
-    const res = await fetch(`${apiBase}/projects`);
-    if (!res.ok) return;
-    const projects: StoredProject[] = await res.json();
-    const projectMap = loadProjectMap();
     const w = await getConnectedWallet();
+    if (!w) return;
+
+    const [apiRes, { market }] = await Promise.all([
+      fetch(`${apiBase}/projects`),
+      getContracts(w.provider),
+    ]);
+    if (!apiRes.ok) return;
+    const apiProjects: StoredProject[] = await apiRes.json();
+
+    // Scan all on-chain projects by nextProjectId (no event query needed)
+    let maxId = 0;
+    try { maxId = Number(await market.nextProjectId()) - 1; } catch {}
 
     const listed: ListedProject[] = [];
-    for (const p of projects) {
-      const onChainId = projectMap[p.id];
-      if (!onChainId || !w) continue;
+    const allMinted: ListedProject[] = [];
+    for (let pid = 1; pid <= maxId; pid++) {
       try {
-        const { market } = await getContracts(w.provider);
-        const raw = await market.projects(onChainId);
+        const raw = await market.projects(pid);
         const onChain = mapOnChainProject(raw);
-        if (onChain.status === 3 && onChain.availableCredits > 0) {
-          listed.push({ local: p, onChain });
-        }
+        // Match backend project by sourceDataHash
+        const rawHash: string = raw[3] as string; // sourceDataHash at index 3
+        const local = apiProjects.find(p =>
+          p.assessment.sourceHash === rawHash || p.assessment.sourceHash === String(raw.sourceDataHash)
+        );
+        if (!local) continue;
+        allMinted.push({ local, onChain });
+        if (onChain.status === 3 && onChain.availableCredits > 0) listed.push({ local, onChain });
       } catch {}
     }
     setListedProjects(listed);
+    setAllOnChainProjects(allMinted);
   }
 
   async function loadBalance(w: WalletState) {
@@ -82,15 +98,28 @@ export default function BuyerMarketplace() {
   }
 
   async function loadPortfolio(w: WalletState) {
-    const projectMap = loadProjectMap();
     const entries: Record<number, number> = {};
-    for (const onChainId of Object.values(projectMap)) {
-      try {
-        const { carbonToken } = await getContracts(w.provider);
-        const bal = await carbonToken.balanceOf(w.account, onChainId);
-        if (Number(bal) > 0) entries[onChainId] = Number(bal);
-      } catch {}
+    setPortfolioError("");
+    setPortfolioDebug("");
+    const debugLines: string[] = [];
+    try {
+      const { market, carbonToken } = await getContracts(w.provider);
+      debugLines.push(`account: ${w.account}`);
+      debugLines.push(`carbonToken: ${config.carbonTokenAddress}`);
+      const nextId: bigint = await market.nextProjectId();
+      const maxId = Number(nextId) - 1;
+      debugLines.push(`nextProjectId: ${nextId} → maxId: ${maxId}`);
+      for (let pid = 1; pid <= maxId; pid++) {
+        const bal: bigint = await carbonToken.balanceOf(w.account, pid);
+        debugLines.push(`balanceOf(${pid}): ${bal}`);
+        if (bal > 0n) entries[pid] = Number(bal);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      debugLines.push(`ERROR: ${msg}`);
+      setPortfolioError(msg);
     }
+    setPortfolioDebug(debugLines.join(" | "));
     setPortfolio(entries);
   }
 
@@ -115,34 +144,53 @@ export default function BuyerMarketplace() {
     };
   }, []);
 
-  async function runAction(key: string, task: () => Promise<void>) {
+  async function runAction(key: string, task: () => Promise<void>, itemId?: string) {
     setActionKey(key);
     setTxMsg("");
     try {
       await task();
       await refreshAll();
     } catch (e) {
-      setTxMsg(e instanceof Error ? e.message : "Transaction failed");
+      const msg = `❌ ${e instanceof Error ? e.message : "Transaction failed"}`;
+      setTxMsg(msg);
+      if (itemId) setCardMsg(prev => ({ ...prev, [itemId]: msg }));
     } finally {
       setActionKey(null);
     }
   }
 
-  async function approveBuy(item: ListedProject, amount: number) {
+  async function approveAndBuy(item: ListedProject, amount: number, itemId: string) {
     if (!wallet) throw new Error("Connect wallet first");
-    const cost = parseEther(String(Number(item.onChain.pricePerCreditFormatted) * amount));
-    const { utilityToken } = await getContracts(wallet.provider);
-    const tx = await utilityToken.approve(config.marketAddress, cost);
-    await tx.wait();
-    setTxMsg(`✅ Approved ${formatUnits(cost, 18)} TCUT for purchase`);
-  }
-
-  async function buyCredits(item: ListedProject, amount: number) {
-    if (!wallet) throw new Error("Connect wallet first");
+    const signer = await wallet.provider.getSigner();
     const { market } = await getContracts(wallet.provider);
-    const tx = await market.buyCredits(item.onChain.id, amount);
-    await tx.wait();
-    setTxMsg(`✅ Bought ${amount} Carbon Credits from "${item.local.input.projectName}"!`);
+
+    // Read actual token address from the contract (not env var) to ensure correctness
+    const tokenAddr: string = await market.utilityToken();
+    const token = new Contract(tokenAddr, erc20Abi, signer);
+    const marketAddr: string = await market.getAddress();
+
+    // Compute cost from already-displayed price (avoids bigint field access issues)
+    const priceFormatted = item.onChain.pricePerCreditFormatted; // e.g. "100.0"
+    const totalCost = parseEther(String(Number(priceFormatted) * amount));
+
+    // Check current allowance
+    const allowance: bigint = await token.allowance(wallet.account, marketAddr);
+
+    if (allowance < totalCost) {
+      setCardMsg(prev => ({ ...prev, [itemId]: "⏳ Step 1/2: MetaMask — Approve TCUT..." }));
+      // Approve MaxUint256 so user never needs to re-approve for future buys
+      const approveTx = await token.approve(marketAddr, MaxUint256);
+      await approveTx.wait();
+      setCardMsg(prev => ({ ...prev, [itemId]: "✅ Approved — ⏳ Step 2/2: MetaMask — ยืนยัน Buy..." }));
+    } else {
+      setCardMsg(prev => ({ ...prev, [itemId]: "⏳ MetaMask popup — กรุณา Confirm ใน MetaMask" }));
+    }
+
+    const buyTx = await market.buyCredits(item.onChain.id, amount);
+    await buyTx.wait();
+    const msg = `✅ ซื้อ ${amount} Credits จาก "${item.local.input.projectName}" สำเร็จ! (${formatUnits(totalCost, 18)} TCUT)`;
+    setTxMsg(msg);
+    setCardMsg(prev => ({ ...prev, [itemId]: msg }));
   }
 
   async function retireCredits(onChainId: number, amount: number, localProject: StoredProject | undefined) {
@@ -290,20 +338,19 @@ export default function BuyerMarketplace() {
                           className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-400" />
                         <span className="text-xs text-gray-500">= <strong>{total} TCUT</strong></span>
                       </div>
-                      <div className="flex gap-2">
+                      <div>
                         <button
                           disabled={!!actionKey || !wallet}
-                          onClick={() => void runAction(`${item.local.id}:approveBuy`, () => approveBuy(item, amount))}
-                          className="flex-1 text-xs border border-purple-300 text-purple-700 py-2 rounded-lg hover:bg-purple-50 disabled:opacity-40 transition-colors font-medium">
-                          {actionKey === `${item.local.id}:approveBuy` ? "Approving..." : "1. Approve TCUT"}
-                        </button>
-                        <button
-                          disabled={!!actionKey || !wallet}
-                          onClick={() => void runAction(`${item.local.id}:buy`, () => buyCredits(item, amount))}
-                          className="flex-1 text-xs bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 disabled:opacity-40 transition-colors font-semibold">
-                          {actionKey === `${item.local.id}:buy` ? "Buying..." : "2. Buy Credits 🛒"}
+                          onClick={() => void runAction(`${item.local.id}:buy`, () => approveAndBuy(item, amount, item.local.id), item.local.id)}
+                          className="w-full text-sm bg-purple-600 text-white py-2.5 rounded-lg hover:bg-purple-700 disabled:opacity-40 transition-colors font-semibold">
+                          {actionKey === `${item.local.id}:buy` ? "⏳ Processing..." : "🛒 Buy Credits"}
                         </button>
                       </div>
+                      {cardMsg[item.local.id] && (
+                        <p className={`text-xs mt-2 px-1 ${cardMsg[item.local.id].startsWith("✅") ? "text-emerald-700" : cardMsg[item.local.id].startsWith("❌") ? "text-red-600" : "text-blue-600"}`}>
+                          {cardMsg[item.local.id]}
+                        </p>
+                      )}
                     </div>
                   </div>
                 );
@@ -325,7 +372,19 @@ export default function BuyerMarketplace() {
               <div className="text-center py-16 text-gray-400">
                 <p className="text-4xl mb-3">💼</p>
                 <p className="text-lg font-medium">ยังไม่มี Carbon Credits</p>
-                <p className="text-sm">ไปที่ Marketplace เพื่อซื้อ Carbon Credits</p>
+                {portfolioDebug && (
+                  <p className="text-xs text-gray-400 max-w-lg mx-auto mt-2 mb-1 break-all font-mono bg-gray-100 p-2 rounded text-left">{portfolioDebug}</p>
+                )}
+                {portfolioError && (
+                  <p className="text-xs text-red-500 max-w-md mx-auto mt-1 mb-3 break-all">{portfolioError}</p>
+                )}
+                <p className="text-sm mb-4">ถ้าเพิ่งซื้อ กด Refresh เพื่อโหลดใหม่</p>
+                <button
+                  onClick={() => void refreshAll()}
+                  className="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-700"
+                >
+                  🔄 Refresh Portfolio
+                </button>
               </div>
             )}
             {wallet && portfolioEntries.length > 0 && (
@@ -340,7 +399,7 @@ export default function BuyerMarketplace() {
                 </div>
                 <div className="space-y-4">
                   {portfolioEntries.map(([onChainId, bal]) => {
-                    const item = listedProjects.find(p => p.onChain.id === Number(onChainId));
+                    const item = allOnChainProjects.find(p => p.onChain.id === Number(onChainId));
                     const local = item?.local;
                     const oid = Number(onChainId);
                     const rAmount = retireAmount[onChainId] ?? 1;
