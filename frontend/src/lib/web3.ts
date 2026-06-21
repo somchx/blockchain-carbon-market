@@ -29,11 +29,16 @@ export type ContractConfig = {
   oracleAddress?: string;
 };
 
+function trimAddr(value: string | undefined): string | undefined {
+  return value?.trim();
+}
+
 function requireAddress(value: string | undefined, label: string) {
-  if (!value) {
+  const addr = trimAddr(value);
+  if (!addr) {
     throw new Error(`${label} is not configured`);
   }
-  return value;
+  return addr;
 }
 
 export function getContractConfig(): ContractConfig {
@@ -42,15 +47,15 @@ export function getContractConfig(): ContractConfig {
     rpcLabel: import.meta.env.VITE_CHAIN_LABEL ?? "Hardhat Local",
     rpcUrl: import.meta.env.VITE_CHAIN_RPC_URL,
     explorerBaseUrl: import.meta.env.VITE_EXPLORER_BASE_URL,
-    marketAddress: import.meta.env.VITE_MARKET_ADDRESS,
-    utilityTokenAddress: import.meta.env.VITE_UTILITY_TOKEN_ADDRESS,
-    carbonTokenAddress: import.meta.env.VITE_CARBON_TOKEN_ADDRESS,
-    assessorAddress: import.meta.env.VITE_ASSESSOR_ADDRESS,
-    expectedSellerAddress: import.meta.env.VITE_EXPECTED_SELLER_ADDRESS,
-    retireCertificateAddress: import.meta.env.VITE_RETIRE_CERTIFICATE_ADDRESS,
-    governanceTokenAddress: import.meta.env.VITE_GOVERNANCE_TOKEN_ADDRESS,
-    governorAddress: import.meta.env.VITE_GOVERNOR_ADDRESS,
-    oracleAddress: import.meta.env.VITE_ORACLE_ADDRESS
+    marketAddress: trimAddr(import.meta.env.VITE_MARKET_ADDRESS),
+    utilityTokenAddress: trimAddr(import.meta.env.VITE_UTILITY_TOKEN_ADDRESS),
+    carbonTokenAddress: trimAddr(import.meta.env.VITE_CARBON_TOKEN_ADDRESS),
+    assessorAddress: trimAddr(import.meta.env.VITE_ASSESSOR_ADDRESS),
+    expectedSellerAddress: trimAddr(import.meta.env.VITE_EXPECTED_SELLER_ADDRESS),
+    retireCertificateAddress: trimAddr(import.meta.env.VITE_RETIRE_CERTIFICATE_ADDRESS),
+    governanceTokenAddress: trimAddr(import.meta.env.VITE_GOVERNANCE_TOKEN_ADDRESS),
+    governorAddress: trimAddr(import.meta.env.VITE_GOVERNOR_ADDRESS),
+    oracleAddress: trimAddr(import.meta.env.VITE_ORACLE_ADDRESS),
   };
 }
 
