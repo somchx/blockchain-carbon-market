@@ -124,11 +124,16 @@ export default function DeveloperDashboard() {
 
   async function runAction(key: string, task: () => Promise<void>) {
     setActionKey(key);
-    setTxMsg("");
+    setTxMsg("⏳ กรุณาตรวจสอบ MetaMask popup และกด Confirm...");
     try {
       await task();
     } catch (e) {
-      setTxMsg(e instanceof Error ? e.message : "Transaction failed");
+      const msg = e instanceof Error ? e.message : "Transaction failed";
+      // user rejected = short message, otherwise show full error
+      const clean = msg.includes("user rejected") || msg.includes("User denied")
+        ? "❌ ยกเลิกใน MetaMask"
+        : `❌ ${msg.slice(0, 300)}`;
+      setTxMsg(clean);
     } finally {
       setActionKey(null);
       await refreshWallet();
