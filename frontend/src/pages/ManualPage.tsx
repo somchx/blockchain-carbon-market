@@ -465,8 +465,8 @@ export default function ManualPage() {
                   </tbody>
                 </table>
               </div>
-              <p className="text-[11px] text-amber-600 mt-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                ⚠️ ระบบใช้พิกัดตัวเมืองของจังหวัด (ไม่ใช่พิกัดโครงการจริง) ดังนั้นถ้าโครงการอยู่นอกเมือง ค่า Land Cover อาจไม่ตรง — เป็น limitation ของ prototype นี้
+              <p className="text-[11px] text-emerald-700 mt-3 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                💡 ตั้งแต่เวอร์ชันล่าสุด Developer สามารถกรอก <strong>พิกัด GPS จริงของพื้นที่โครงการ</strong> (Latitude / Longitude) ได้ที่หน้า Submit Project — ระบบจะใช้พิกัดนั้นสำหรับ MODIS + NASA + OWM ทั้งหมด ถ้าไม่กรอกถึงจะ fallback เป็นพิกัดตัวเมืองจังหวัด
               </p>
             </div>
           </div>
