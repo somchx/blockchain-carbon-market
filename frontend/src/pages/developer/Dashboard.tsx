@@ -69,10 +69,28 @@ function mapOnChainProject(raw: {
   };
 }
 
-const recommendationStyle = {
-  approve: "bg-green-100 text-green-800",
-  review: "bg-yellow-100 text-yellow-800",
-  reject: "bg-red-100 text-red-800",
+const RISK_LEVEL: Record<string, { label: string; style: string; icon: string; range: string; meaning: string }> = {
+  approve: {
+    label: "Low Risk",
+    style: "bg-green-100 text-green-800 border border-green-200",
+    icon: "🟢",
+    range: "Risk Score < 45",
+    meaning: "ข้อมูลน่าเชื่อถือ — NASA + ดาวเทียมยืนยันตรงกับที่รายงาน ผ่านเกณฑ์อนุมัติได้",
+  },
+  review: {
+    label: "Med Risk",
+    style: "bg-yellow-100 text-yellow-800 border border-yellow-200",
+    icon: "🟡",
+    range: "Risk Score 45–69",
+    meaning: "มีความไม่สอดคล้องบางส่วน — Verifier ควรตรวจ evidence เพิ่มก่อนตัดสินใจ",
+  },
+  reject: {
+    label: "High Risk",
+    style: "bg-red-100 text-red-800 border border-red-200",
+    icon: "🔴",
+    range: "Risk Score ≥ 70 หรือ credits < 35% ของที่ขอ",
+    meaning: "ข้อมูลไม่ผ่านเกณฑ์ — ดาวเทียม/NASA ขัดแย้งกับที่รายงาน หรือ credits ที่คำนวณได้ต่ำเกินไป",
+  },
 };
 
 const statusStyle: Record<number, string> = {
@@ -409,9 +427,17 @@ export default function DeveloperDashboard() {
                       <p className="text-sm text-gray-500">{project.input.sellerName}</p>
                     </div>
                     <div className="flex flex-col items-end gap-2">
-                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${recommendationStyle[project.assessment.recommendation]}`}>
-                        {project.assessment.recommendation.toUpperCase()}
-                      </span>
+                      {(() => {
+                        const rl = RISK_LEVEL[project.assessment.recommendation];
+                        return (
+                          <div className="flex flex-col items-end gap-1">
+                            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${rl.style}`}>
+                              {rl.icon} {rl.label}
+                            </span>
+                            <span className="text-[10px] text-gray-400 font-mono">{rl.range}</span>
+                          </div>
+                        );
+                      })()}
                       {onChain && (
                         <span className={`text-xs font-semibold px-2 py-1 rounded-full ${statusStyle[onChain.status]}`}>
                           {PROJECT_STATUS[onChain.status]}
@@ -434,6 +460,48 @@ export default function DeveloperDashboard() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Risk level explanation */}
+                  {(() => {
+                    const rl = RISK_LEVEL[project.assessment.recommendation];
+                    const rs = project.assessment.riskScore;
+                    const sig = project.assessment.signals;
+                    const blend = Math.round(
+                      sig.iotConfidence * 0.3 + sig.governmentConfidence * 0.3 +
+                      sig.historicalConfidence * 0.25 + sig.userInputConfidence * 0.15
+                    );
+                    const drivers: string[] = [];
+                    if (sig.iotConfidence < 50) drivers.push(`NDVI ต่ำ (${sig.iotConfidence}) — พืชพรรณในพื้นที่ไม่สอดคล้อง`);
+                    if (sig.governmentConfidence < 50) drivers.push(`Land Cover ต่ำ (${sig.governmentConfidence}) — ดาวเทียมเห็นประเภทที่ดินต่างจากที่ claim`);
+                    if (sig.historicalConfidence < 50) drivers.push(`NASA ต่ำ (${sig.historicalConfidence}) — สภาพอากาศ/แสงไม่เหมาะกับโครงการประเภทนี้`);
+                    if (sig.anomalyScore > 30) drivers.push(`Anomaly สูง (${sig.anomalyScore}) — ตัวเลขที่รายงานเองผิดปกติเมื่อเทียบกับ signal`);
+                    return (
+                      <div className={`mb-4 rounded-xl p-3.5 text-xs border ${
+                        project.assessment.recommendation === "approve" ? "bg-green-50 border-green-200" :
+                        project.assessment.recommendation === "review"  ? "bg-yellow-50 border-yellow-200" :
+                        "bg-red-50 border-red-200"
+                      }`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <p className="font-semibold text-gray-900 mb-0.5">{rl.icon} {rl.label} — Risk Score {rs}/100</p>
+                            <p className="text-gray-600 leading-5">{rl.meaning}</p>
+                            {drivers.length > 0 && (
+                              <div className="mt-2 space-y-0.5">
+                                <p className="font-medium text-gray-700">ปัจจัยที่กดคะแนน:</p>
+                                {drivers.map(d => <p key={d} className="text-gray-500">• {d}</p>)}
+                              </div>
+                            )}
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="text-gray-400">Blend</p>
+                            <p className="font-bold text-gray-800 text-base">{blend}</p>
+                            <p className="text-gray-400 mt-1">Risk</p>
+                            <p className="font-bold text-gray-800 text-base">{rs}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Signals */}
                   <div className="grid grid-cols-3 gap-2 mb-3">
