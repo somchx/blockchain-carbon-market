@@ -9,3 +9,5 @@ cache
 typechain-types
 frontend/.vite
 backend/data/runtime.json
+.vercel
+*.tsbuildinfo

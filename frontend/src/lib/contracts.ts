@@ -68,6 +68,20 @@ export const erc20Abi = [
   "function decimals() view returns (uint8)"
 ] as const;
 
+export const tcutSaleAbi = [
+  "function rate() view returns (uint256)",
+  "function faucetAmount() view returns (uint256)",
+  "function faucetCooldown() view returns (uint256)",
+  "function lastClaim(address) view returns (uint256)",
+  "function timeUntilNextClaim(address user) view returns (uint256)",
+  "function tokenBalance() view returns (uint256)",
+  "function buyTokens() payable",
+  "function claimFaucet()",
+  "function token() view returns (address)",
+  "event TokensPurchased(address indexed buyer, uint256 ethPaid, uint256 tcutReceived)",
+  "event FaucetClaimed(address indexed claimant, uint256 amount)"
+] as const;
+
 export const carbonCreditAbi = [
   "function balanceOf(address account, uint256 id) view returns (uint256)"
 ] as const;

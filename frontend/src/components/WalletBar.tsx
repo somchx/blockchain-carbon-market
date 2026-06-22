@@ -9,6 +9,7 @@ import {
   switchToConfiguredNetwork,
   type WalletState,
 } from "../lib/web3";
+import BuyTCUTModal from "./BuyTCUTModal";
 
 type Props = {
   role: Role;
@@ -38,6 +39,7 @@ export default function WalletBar({ role }: Props) {
   const [msg, setMsg] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [showBuyModal, setShowBuyModal] = useState(false);
 
   async function refresh() {
     const w = await getConnectedWallet();
@@ -94,63 +96,83 @@ export default function WalletBar({ role }: Props) {
   }
 
   const chainOk = wallet?.chainId === config.chainId;
+  const hasSaleContract = !!config.tcutSaleAddress;
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
-        {/* Left: logo + role */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate("/")}
-            className="text-lg font-bold text-gray-900 hover:text-emerald-600 transition-colors"
-          >
-            🌿 Carbon Market
-          </button>
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${roleBadge[role]}`}>
-            {roleLabel[role]}
-          </span>
-        </div>
-
-        {/* Right: wallet info */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {wallet ? (
-            <>
-              <span className="text-xs text-gray-500 hidden sm:block">{balance}</span>
-              <span
-                className={`text-xs px-2 py-1 rounded font-mono ${chainOk ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}
-              >
-                {chainOk ? shorten(wallet.account) : `Wrong network (need ${config.rpcLabel})`}
-              </span>
-              {!chainOk && (
-                <button
-                  onClick={switchNet}
-                  disabled={switching}
-                  className="text-xs bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 disabled:opacity-60"
-                >
-                  {switching ? "Switching..." : "Switch Network"}
-                </button>
-              )}
-            </>
-          ) : (
+    <>
+      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
+          {/* Left: logo + role */}
+          <div className="flex items-center gap-3">
             <button
-              onClick={connect}
-              disabled={connecting}
-              className="text-sm bg-emerald-600 text-white px-4 py-1.5 rounded-lg hover:bg-emerald-700 font-medium disabled:opacity-60 min-w-[140px]"
+              onClick={() => navigate("/")}
+              className="text-lg font-bold text-gray-900 hover:text-emerald-600 transition-colors"
             >
-              {connecting ? "Connecting..." : "Connect MetaMask"}
+              🌿 Carbon Market
             </button>
-          )}
-          <button
-            onClick={() => navigate("/")}
-            className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 px-2 py-1 rounded"
-          >
-            Switch Role
-          </button>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${roleBadge[role]}`}>
+              {roleLabel[role]}
+            </span>
+          </div>
+
+          {/* Right: wallet info */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {wallet ? (
+              <>
+                <span className="text-xs text-gray-500 hidden sm:block">{balance}</span>
+                {chainOk && hasSaleContract && (
+                  <button
+                    onClick={() => setShowBuyModal(true)}
+                    className="text-xs bg-emerald-600 text-white px-3 py-1 rounded-lg hover:bg-emerald-700 font-medium"
+                  >
+                    + ซื้อ TCUT
+                  </button>
+                )}
+                <span
+                  className={`text-xs px-2 py-1 rounded font-mono ${chainOk ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}
+                >
+                  {chainOk ? shorten(wallet.account) : `Wrong network (need ${config.rpcLabel})`}
+                </span>
+                {!chainOk && (
+                  <button
+                    onClick={switchNet}
+                    disabled={switching}
+                    className="text-xs bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 disabled:opacity-60"
+                  >
+                    {switching ? "Switching..." : "Switch Network"}
+                  </button>
+                )}
+              </>
+            ) : (
+              <button
+                onClick={connect}
+                disabled={connecting}
+                className="text-sm bg-emerald-600 text-white px-4 py-1.5 rounded-lg hover:bg-emerald-700 font-medium disabled:opacity-60 min-w-[140px]"
+              >
+                {connecting ? "Connecting..." : "Connect MetaMask"}
+              </button>
+            )}
+            <button
+              onClick={() => navigate("/")}
+              className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 px-2 py-1 rounded"
+            >
+              Switch Role
+            </button>
+          </div>
         </div>
-      </div>
-      {msg && (
-        <div className={`text-xs text-center py-1 px-4 ${msg.startsWith("Switched") ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{msg}</div>
+        {msg && (
+          <div className={`text-xs text-center py-1 px-4 ${msg.startsWith("Switched") ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{msg}</div>
+        )}
+      </header>
+
+      {showBuyModal && wallet && (
+        <BuyTCUTModal
+          provider={wallet.provider}
+          account={wallet.account}
+          onClose={() => setShowBuyModal(false)}
+          onSuccess={() => void refresh()}
+        />
       )}
-    </header>
+    </>
   );
 }

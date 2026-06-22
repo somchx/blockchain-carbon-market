@@ -1,5 +1,5 @@
 import { BrowserProvider, Contract, formatUnits } from "ethers";
-import { carbonCreditAbi, carbonMarketAbi, erc20Abi, governanceTokenAbi, governorAbi, retireCertificateAbi, riskOracleAbi } from "./contracts";
+import { carbonCreditAbi, carbonMarketAbi, erc20Abi, governanceTokenAbi, governorAbi, retireCertificateAbi, riskOracleAbi, tcutSaleAbi } from "./contracts";
 
 type InjectedProvider = {
   request: (args: { method: string; params?: unknown[] | Record<string, unknown> }) => Promise<unknown>;
@@ -27,6 +27,7 @@ export type ContractConfig = {
   governanceTokenAddress?: string;
   governorAddress?: string;
   oracleAddress?: string;
+  tcutSaleAddress?: string;
 };
 
 function trimAddr(value: string | undefined): string | undefined {
@@ -56,6 +57,7 @@ export function getContractConfig(): ContractConfig {
     governanceTokenAddress: trimAddr(import.meta.env.VITE_GOVERNANCE_TOKEN_ADDRESS),
     governorAddress: trimAddr(import.meta.env.VITE_GOVERNOR_ADDRESS),
     oracleAddress: trimAddr(import.meta.env.VITE_ORACLE_ADDRESS),
+    tcutSaleAddress: trimAddr(import.meta.env.VITE_TCUT_SALE_ADDRESS),
   };
 }
 
@@ -164,6 +166,43 @@ export async function getContracts(provider: BrowserProvider) {
     governor: new Contract(governorAddress, governorAbi, signer),
     oracle: new Contract(oracleAddress, riskOracleAbi, signer)
   };
+}
+
+export function getTCUTSaleContract(provider: BrowserProvider) {
+  const config = getContractConfig();
+  const addr = requireAddress(config.tcutSaleAddress, "VITE_TCUT_SALE_ADDRESS");
+  return new Contract(addr, tcutSaleAbi, provider);
+}
+
+export async function readTCUTSaleInfo(provider: BrowserProvider, account?: string) {
+  const sale = getTCUTSaleContract(provider);
+  const [rate, inventory, faucetAmount, cooldownSec] = await Promise.all([
+    sale.rate() as Promise<bigint>,
+    sale.tokenBalance() as Promise<bigint>,
+    sale.faucetAmount() as Promise<bigint>,
+    sale.faucetCooldown() as Promise<bigint>,
+  ]);
+  let secondsUntilClaim = 0n;
+  if (account) {
+    secondsUntilClaim = await (sale.timeUntilNextClaim(account) as Promise<bigint>);
+  }
+  return { rate, inventory, faucetAmount, cooldownSec, secondsUntilClaim };
+}
+
+export async function addTCUTToMetaMask() {
+  const config = getContractConfig();
+  if (!config.utilityTokenAddress || !window.ethereum) return;
+  await (window.ethereum as InjectedProvider).request({
+    method: "wallet_watchAsset",
+    params: {
+      type: "ERC20",
+      options: {
+        address: config.utilityTokenAddress,
+        symbol: "TCUT",
+        decimals: 18,
+      },
+    } as unknown as Record<string, unknown>,
+  });
 }
 
 export async function readWalletBalances(provider: BrowserProvider, account: string) {

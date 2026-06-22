@@ -77,13 +77,24 @@ const tools = [
 ];
 
 const flow = [
-  { n: "01", label: "Submit", desc: "Developer ยื่นโครงการ ระบบดึง climate data จาก NASA POWER คำนวณ Risk Score และ Required Stake อัตโนมัติ" },
-  { n: "02", label: "Stake", desc: "Developer วาง PLAT Token เป็น collateral — stake สูงขึ้นเมื่อ risk สูง เพื่อลด incentive ข้อมูลเท็จ" },
-  { n: "03", label: "Verify", desc: "Verifier ตรวจ signals, เปิด IPFS evidence และ publish assessment บน Blockchain ผ่าน MetaMask" },
-  { n: "04", label: "Mint", desc: "ระบบ mint ERC-1155 Carbon Credit Token แยกตาม projectId และ list ใน marketplace พร้อมราคา" },
-  { n: "05", label: "Trade & Retire", desc: "Buyer ซื้อเครดิต, ถือใน portfolio หรือ retire เพื่อ burn token และรับ ERC-721 NFT Certificate" },
-  { n: "06", label: "Trace & Govern", desc: "ทุก event มี tx hash บน Etherscan ค้นหาใน Explorer หรือ vote เปลี่ยน parameter ผ่าน DAO" },
+  { icon: "🌱", label: "ยื่นโครงการ", sub: "Developer", color: "emerald" },
+  { icon: "🔍", label: "ตรวจสอบ", sub: "Verifier", color: "blue" },
+  { icon: "🔒", label: "วางหลักประกัน", sub: "Developer", color: "purple" },
+  { icon: "🌿", label: "ออก Credits", sub: "ระบบอัตโนมัติ", color: "teal" },
+  { icon: "🛒", label: "ซื้อ Credits", sub: "Buyer", color: "amber" },
+  { icon: "🔥", label: "ใช้ Offset", sub: "Buyer", color: "orange" },
+  { icon: "📜", label: "รับใบรับรอง", sub: "NFT", color: "rose" },
 ];
+
+const flowColor: Record<string, string> = {
+  emerald: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  blue: "bg-blue-100 text-blue-700 border-blue-200",
+  purple: "bg-purple-100 text-purple-700 border-purple-200",
+  teal: "bg-teal-100 text-teal-700 border-teal-200",
+  amber: "bg-amber-100 text-amber-700 border-amber-200",
+  orange: "bg-orange-100 text-orange-700 border-orange-200",
+  rose: "bg-rose-100 text-rose-700 border-rose-200",
+};
 
 export default function RoleSelect() {
   return (
@@ -91,15 +102,21 @@ export default function RoleSelect() {
 
       {/* ── Header ── */}
       <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/95 backdrop-blur shadow-sm">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
-          <div className="flex items-center gap-2.5">
-            <span className="text-xl">🌿</span>
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3.5">
+          <div className="flex items-center gap-4 min-w-0">
+            <span className="text-xl shrink-0">🌿</span>
             <div>
               <p className="text-sm font-bold leading-none text-gray-900">Thailand Carbon Market</p>
               <p className="text-[11px] text-gray-400 mt-0.5">Blockchain Carbon Credit Platform</p>
             </div>
           </div>
-          <div className="flex gap-2 text-[11px]">
+          <div className="flex shrink-0 items-center gap-2 text-[11px]">
+            <Link
+              to="/manual"
+              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-gray-600 font-medium hover:bg-gray-50 transition-colors"
+            >
+              คู่มือ
+            </Link>
             <span className="rounded-full bg-gray-100 px-2.5 py-1 text-gray-500 font-medium">{config.rpcLabel}</span>
             <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700 font-medium border border-emerald-200">ERC-1155 · ERC-20 · ERC-721</span>
           </div>
@@ -115,22 +132,24 @@ export default function RoleSelect() {
 
           <div className="relative max-w-3xl">
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-600">
-              Research Prototype · Sepolia Testnet · Hardhat + Solidity
+              Thailand Prototype · Ethereum Sepolia · Blockchain + Smart Contracts
             </p>
             <h1 className="text-3xl font-bold leading-tight text-gray-900 sm:text-4xl">
-              ตลาดคาร์บอนเครดิต<br />
-              <span className="text-emerald-600">ที่ตรวจสอบได้จริง</span>
+              ตลาดซื้อขายคาร์บอนเครดิตบน Blockchain<br />
+              <span className="text-xl font-semibold text-emerald-600 sm:text-2xl">ตรวจสอบได้ ลดการใช้ซ้ำ</span>
             </h1>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-gray-500">
-              End-to-end carbon credit lifecycle บน Ethereum — ตั้งแต่ submit โครงการ, ประเมินความเสี่ยงด้วย NASA POWER API,
-              เก็บหลักฐานบน IPFS, ซื้อขาย Token ไปจนถึงออก NFT ใบรับรองการ offset
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-gray-500">
+              ระบบนี้พัฒนาขึ้นเพื่อแก้ปัญหาสำคัญของตลาดคาร์บอนเครดิต ได้แก่ ความโปร่งใสของข้อมูล ความน่าเชื่อถือของโครงการ
+              การตรวจสอบย้อนกลับ และการป้องกันการนำเครดิตไปใช้ซ้ำ โดยใช้ Blockchain, Smart Contract, IPFS,
+              External APIs และ Risk Assessment Engine ทำงานร่วมกัน ตั้งแต่การยื่นโครงการ การตรวจสอบ การวางหลักประกัน
+              การออกเครดิต การซื้อขาย ไปจนถึงการออกใบรับรองการชดเชยคาร์บอน
             </p>
 
             <div className="mt-7 flex flex-wrap gap-6 text-sm">
               {[
-                ["7", "Smart Contracts", "บน Sepolia"],
-                ["3", "Token Standards", "ERC-1155 / 20 / 721"],
-                ["51+", "Unit Tests", "Hardhat + Jest"],
+                ["5", "User Groups", "Developer · Verifier · Buyer · Regulator · DAO"],
+                ["1", "Credit Model", "1 ERC-1155 Token = 1 tCO2"],
+                ["Sepolia", "Deployment", "Prototype on Ethereum Testnet"],
               ].map(([num, label, sub]) => (
                 <div key={label}>
                   <p className="text-2xl font-bold text-gray-900">{num}</p>
@@ -185,21 +204,6 @@ export default function RoleSelect() {
           </div>
         </section>
 
-        {/* ── Manual Banner ── */}
-        <Link
-          to="/manual"
-          className="flex items-center justify-between gap-4 rounded-2xl border-2 border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 px-6 py-4 hover:shadow-md hover:border-emerald-300 transition-all duration-150 group"
-        >
-          <div className="flex items-center gap-4">
-            <span className="text-3xl">📘</span>
-            <div>
-              <p className="font-bold text-gray-900 text-sm">ใหม่ต่อ Carbon Credit บน Blockchain?</p>
-              <p className="text-xs text-gray-500 mt-0.5">อ่านคู่มือการใช้งาน — อธิบายทีละขั้นตอน พร้อม diagram ภาษาเข้าใจง่าย</p>
-            </div>
-          </div>
-          <span className="text-emerald-600 font-semibold text-sm whitespace-nowrap group-hover:translate-x-1 transition-transform">อ่านคู่มือ →</span>
-        </Link>
-
         {/* ── Supporting Tools ── */}
         <section>
           <div className="mb-5">
@@ -226,24 +230,34 @@ export default function RoleSelect() {
         </section>
 
         {/* ── System Flow ── */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-7 shadow-sm">
+        <section>
           <div className="mb-6">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">System Flow</p>
             <h2 className="mt-1.5 text-xl font-bold text-gray-900">วงจรชีวิตของ Carbon Credit</h2>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {flow.map((item, i) => (
-              <div key={item.n} className="flex gap-4">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
-                  {i + 1}
+          <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm overflow-x-auto">
+            <div className="flex items-start gap-1 min-w-max mx-auto w-fit">
+              {flow.map((step, i) => (
+                <div key={step.label} className="flex items-start">
+                  <div className="flex flex-col items-center gap-2 w-20">
+                    <div className={`w-14 h-14 rounded-2xl border-2 flex items-center justify-center text-2xl shadow-sm ${flowColor[step.color]}`}>
+                      {step.icon}
+                    </div>
+                    <p className="text-xs font-semibold text-gray-800 text-center leading-4">{step.label}</p>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${flowColor[step.color]}`}>
+                      {step.sub}
+                    </span>
+                  </div>
+                  {i < flow.length - 1 && (
+                    <div className="flex items-center mt-5 mx-0.5">
+                      <div className="w-6 h-0.5 bg-gray-300" />
+                      <div className="w-0 h-0 border-t-4 border-t-transparent border-b-4 border-b-transparent border-l-8 border-l-gray-300" />
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <p className="font-semibold text-gray-900 text-sm">{item.label}</p>
-                  <p className="mt-1 text-xs leading-5 text-gray-500">{item.desc}</p>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </section>
 
