@@ -13,6 +13,8 @@ import BuyTCUTModal from "./BuyTCUTModal";
 
 type Props = {
   role: Role;
+  position?: "top" | "bottom";
+  hideBalance?: boolean;
 };
 
 const roleLabel: Record<Role, string> = {
@@ -31,7 +33,7 @@ function shorten(addr: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
-export default function WalletBar({ role }: Props) {
+export default function WalletBar({ role, position = "top", hideBalance = false }: Props) {
   const navigate = useNavigate();
   const config = getContractConfig();
   const [wallet, setWallet] = useState<WalletState | null>(null);
@@ -100,7 +102,7 @@ export default function WalletBar({ role }: Props) {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+      <header className={`z-50 bg-white border-gray-200 shadow-sm ${position === "bottom" ? "fixed bottom-0 left-0 right-0 border-t" : "sticky top-0 border-b"}`}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
           {/* Left: logo + role */}
           <div className="flex items-center gap-3">
@@ -119,13 +121,13 @@ export default function WalletBar({ role }: Props) {
           <div className="flex items-center gap-2 flex-wrap">
             {wallet ? (
               <>
-                <span className="text-xs text-gray-500 hidden sm:block">{balance}</span>
+                {role !== "buyer" && !hideBalance && <span className="text-xs text-gray-500 hidden sm:block">{balance}</span>}
                 {chainOk && hasSaleContract && (
                   <button
                     onClick={() => setShowBuyModal(true)}
                     className="text-xs bg-emerald-600 text-white px-3 py-1 rounded-lg hover:bg-emerald-700 font-medium"
                   >
-                    + ซื้อ TCUT
+                    + รับ TCUT
                   </button>
                 )}
                 <span

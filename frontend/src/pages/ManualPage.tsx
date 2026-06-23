@@ -14,16 +14,16 @@ const FLOW = [
 
 const FLOW_COLOR: Record<string, string> = {
   emerald: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  blue:    "bg-blue-100 text-blue-700 border-blue-200",
-  purple:  "bg-purple-100 text-purple-700 border-purple-200",
-  teal:    "bg-teal-100 text-teal-700 border-teal-200",
-  amber:   "bg-amber-100 text-amber-700 border-amber-200",
-  orange:  "bg-orange-100 text-orange-700 border-orange-200",
-  rose:    "bg-rose-100 text-rose-700 border-rose-200",
+  blue: "bg-blue-100 text-blue-700 border-blue-200",
+  purple: "bg-purple-100 text-purple-700 border-purple-200",
+  teal: "bg-teal-100 text-teal-700 border-teal-200",
+  amber: "bg-amber-100 text-amber-700 border-amber-200",
+  orange: "bg-orange-100 text-orange-700 border-orange-200",
+  rose: "bg-rose-100 text-rose-700 border-rose-200",
 };
 
 // ─── Role steps ───────────────────────────────────────────────────────────────
-type Step = { icon: string; title: string; body: string; tag?: string; link?: string; linkLabel?: string };
+type Step = { icon: string; title: string; body: string; tag?: string; link?: string; linkLabel?: string; externalLink?: string; externalLinkLabel?: string; mono?: string };
 
 const DEV_STEPS: Step[] = [
   {
@@ -97,30 +97,51 @@ const VER_STEPS: Step[] = [
 
 const BUYER_STEPS: Step[] = [
   {
-    icon: "🛒",
-    title: "เลือก Carbon Credit ที่ต้องการ",
-    body: "เข้า Marketplace ดู Carbon Credit ที่วางขายอยู่ แต่ละอันมีชื่อโครงการ, จังหวัด, ราคาต่อตัน และ Risk Badge บอกความน่าเชื่อถือ",
-    tag: "ไม่ต้องใช้ MetaMask",
+    icon: "⛽",
+    title: "เตรียม Sepolia ETH สำหรับค่า Gas",
+    body: "ทุก transaction บน blockchain ต้องจ่ายค่า gas ด้วย Sepolia ETH (ไม่ใช่เงินจริง — ฟรี) กรอก wallet address ในหน้า faucet แล้วกด Request ถ้าไม่มี ETH ระบบจะขึ้น error 'insufficient funds' และทำอะไรไม่ได้เลย",
+    tag: "ทำก่อนอย่างอื่น",
     link: "/buyer",
     linkLabel: "ไปหน้า Buyer",
+    externalLink: "https://cloud.google.com/application/web3/faucet/ethereum/sepolia",
+    externalLinkLabel: "⛽ Google Sepolia Faucet →",
   },
   {
-    icon: "💳",
-    title: "ซื้อ Credits",
-    body: "กรอกจำนวนที่ต้องการ กด Buy Credits แล้วยืนยันใน MetaMask ระบบจะตัด TCUT Token และโอน Carbon Credit เข้ากระเป๋าให้อัตโนมัติ (Approve + Buy ในขั้นตอนเดียว)",
-    tag: "ต้องใช้ MetaMask",
+    icon: "🪙",
+    title: "รับ TCUT Token (เงินที่ใช้ในระบบ)",
+    body: "กดปุ่ม '+ รับ TCUT' ที่มุมขวาบนของหน้า Buyer เลือกวิธีรับ: 'รับฟรี (Faucet)' ได้ 100 TCUT ฟรีต่อครั้ง หรือ 'ซื้อด้วย ETH' แลก Sepolia ETH เป็น TCUT แล้วยืนยันใน MetaMask จากนั้นกดปุ่ม 'เพิ่มใน MetaMask' ในหน้าต่างรับ TCUT เพื่อแสดงยอดใน MetaMask หรือ import token address ด้านล่างด้วยตนเอง",
+    tag: "🦊 ต้องใช้ MetaMask",
+    mono: "0xe51A5687ad95b737D6DF0DF89CD2419375214ec5",
+  },
+  {
+    icon: "👁️",
+    title: "เพิ่ม TCUT ใน MetaMask (เพื่อดูยอด)",
+    body: "กดปุ่ม 'เพิ่มใน MetaMask' ในหน้าต่าง รับ TCUT แล้วกด Add token ใน MetaMask popup ยอด TCUT จะปรากฏในแท็บ Tokens หมายเหตุ: ต้องดูที่ network Sepolia และมุมมอง 'Custom tokens' — MetaMask ซ่อน testnet tokens ใน All networks view",
+    tag: "แนะนำทำ",
+  },
+  {
+    icon: "🔓",
+    title: "Enable TCUT — ทำครั้งเดียวตลอดชีพ",
+    body: "ก่อนซื้อครั้งแรก ระบบจะแสดงแถบสีส้ม 'เปิดใช้ TCUT ก่อนซื้อ' ในหน้า Marketplace กดปุ่ม 'Enable TCUT' แล้วยืนยันใน MetaMask ขั้นตอนนี้ให้สิทธิ์ระบบตัด TCUT แทนคุณ ทำครั้งเดียวและระบบจะจำไว้ตลอด",
+    tag: "🦊 ต้องใช้ MetaMask",
+  },
+  {
+    icon: "🛒",
+    title: "เลือกและซื้อ Carbon Credits",
+    body: "เข้า Marketplace ดู Carbon Credit ที่วางขาย แต่ละ card แสดงชื่อโครงการ, จังหวัด, ราคา TCUT ต่อตัน และ Risk Badge บอกความน่าเชื่อถือ กรอกจำนวนตัน กด 'Buy Credits' แล้วยืนยันใน MetaMask ระบบตัด TCUT และโอน Credit เข้ากระเป๋าทันที",
+    tag: "🦊 ต้องใช้ MetaMask",
   },
   {
     icon: "💼",
-    title: "ดู Portfolio",
-    body: "แท็บ My Portfolio แสดงว่าคุณถือ Carbon Credit จากโครงการไหนบ้าง เท่าไหร่ตัน — เหมือนกระเป๋าหุ้น แต่เป็นเครดิตคาร์บอน",
-    tag: "ต้องใช้ MetaMask",
+    title: "ดู My Portfolio",
+    body: "แท็บ 'My Portfolio' แสดง Carbon Credit ทั้งหมดที่คุณถืออยู่ แยกตามโครงการ — จากป่าไหน กี่ตัน สามารถ Retire เพื่อ offset คาร์บอนจริงๆ ได้ที่นี่",
+    tag: "🦊 ต้องใช้ MetaMask",
   },
   {
     icon: "🔥",
-    title: "Retire Credits เพื่อ Offset จริง",
-    body: "เมื่อต้องการใช้ offset จริง กด Retire Credits ระบบจะเผา token นั้นทิ้งและออก NFT ใบรับรองให้ ใบรับรองนี้เป็นหลักฐานถาวรว่าคุณ offset จริงกี่ตัน",
-    tag: "ต้องใช้ MetaMask",
+    title: "Retire Credits — รับ NFT Certificate",
+    body: "กด 'Retire & Get NFT Certificate' ระบบจะเผา Carbon Credit นั้นทิ้งถาวร (ใช้ได้ครั้งเดียว — ป้องกันการนับซ้ำ) และออก NFT ใบรับรองในกระเป๋า MetaMask ของคุณ เป็นหลักฐานถาวรบน blockchain ว่าคุณ offset จริงกี่ tCO₂",
+    tag: "🦊 ต้องใช้ MetaMask",
   },
 ];
 
@@ -130,43 +151,47 @@ const CONCEPTS = [
     icon: "🪙",
     term: "TCUT Token",
     simple: "เงินในระบบ",
-    body: "ใช้ซื้อ Carbon Credit และวางหลักประกัน เหมือนเงินบาทในแพลตฟอร์มนี้ (ใช้บน Sepolia Testnet — ยังไม่มีมูลค่าจริง)",
+    body: "เป็น ERC-20 token ใช้ซื้อ Carbon Credit, วางหลักประกัน และรับ reward หน่วยทุกหน่วยเหมือนกัน จึงเหมาะกับการเป็นเหรียญกลางของระบบ",
     color: "amber",
   },
   {
     icon: "🌿",
     term: "Carbon Credit Token",
     simple: "ตั๋วลดคาร์บอน",
-    body: "1 Credit = ลดคาร์บอน 1 ตัน ถือเป็น token ในกระเป๋า ขายต่อได้ หรือเผาทิ้งเพื่อ offset จริง",
+    body: "ใช้มาตรฐาน ERC-1155 เพราะแต่ละโครงการเป็นคนละ tokenId แต่ในโครงการเดียวกันมีได้หลายหน่วย โดย 1 token แทน 1 tCO2 ขายต่อหรือ retire ได้",
     color: "emerald",
   },
   {
     icon: "📜",
     term: "NFT Certificate",
     simple: "ใบรับรองดิจิทัล",
-    body: "เมื่อ retire credits ระบบออกใบรับรองเป็น NFT เก็บบน IPFS ตลอดไป ใครก็ตรวจสอบได้ว่า offset จริง",
+    body: "ใช้มาตรฐาน ERC-721 เพราะใบรับรองแต่ละใบไม่ซ้ำกัน มีเจ้าของ, project, จำนวนเครดิต และเวลาที่ retire เฉพาะของตัวเอง",
     color: "rose",
   },
   {
     icon: "🗳️",
     term: "CGOV Token",
     simple: "สิทธิ์โหวต",
-    body: "ใช้โหวตเปลี่ยนกฎของระบบ เช่น ใครเป็น Verifier, ค่าธรรมเนียมเท่าไหร่ เหมือนหุ้นที่มีสิทธิ์ออกเสียง",
+    body: "เป็น ERC-20 governance token ใช้โหวตเปลี่ยนกฎของระบบ เช่น ใครเป็น Verifier หรือค่าธรรมเนียมเท่าไหร่ เหมือนแต้มสิทธิ์ออกเสียง",
     color: "purple",
   },
 ];
 
 const CONCEPT_COLOR: Record<string, { bg: string; border: string; badge: string; text: string }> = {
-  amber:   { bg: "bg-amber-50",   border: "border-amber-200",   badge: "bg-amber-100 text-amber-700",   text: "text-amber-900" },
+  amber: { bg: "bg-amber-50", border: "border-amber-200", badge: "bg-amber-100 text-amber-700", text: "text-amber-900" },
   emerald: { bg: "bg-emerald-50", border: "border-emerald-200", badge: "bg-emerald-100 text-emerald-700", text: "text-emerald-900" },
-  rose:    { bg: "bg-rose-50",    border: "border-rose-200",    badge: "bg-rose-100 text-rose-700",     text: "text-rose-900" },
-  purple:  { bg: "bg-purple-50",  border: "border-purple-200",  badge: "bg-purple-100 text-purple-700", text: "text-purple-900" },
+  rose: { bg: "bg-rose-50", border: "border-rose-200", badge: "bg-rose-100 text-rose-700", text: "text-rose-900" },
+  purple: { bg: "bg-purple-50", border: "border-purple-200", badge: "bg-purple-100 text-purple-700", text: "text-purple-900" },
 };
 
 // ─── Issues ───────────────────────────────────────────────────────────────────
 const ISSUES = [
   { q: "MetaMask ขึ้น Wrong Network", a: "กดปุ่ม Switch Network ในแถบด้านบนของหน้า แล้วเลือก Sepolia" },
-  { q: "กด Buy แล้วขึ้น Error", a: "ตรวจว่า TCUT balance พอไหม — ดูยอดมุมขวาบนของหน้า Buyer" },
+  { q: "ขึ้น 'insufficient funds' / ค่า gas", a: "ต้องมี Sepolia ETH ในกระเป๋าก่อน ไปรับฟรีที่ Google Cloud Web3 Faucet — พิมพ์ใน Google ว่า 'Sepolia faucet' แล้วกรอก wallet address" },
+  { q: "Enable TCUT แล้วยังซื้อไม่ได้", a: "ลอง reload หน้า แล้วตรวจดูว่าแถบสีส้มหายไปยัง (แสดงว่า Enable สำเร็จ) ถ้ายังไม่หาย ลอง Enable ใหม่อีกครั้ง" },
+  { q: "กด Buy แล้วขึ้น Error หรือ TCUT ไม่พอ", a: "ตรวจยอด TCUT ในแถบ Wallet Balance ของหน้า Buyer ถ้าน้อย กดปุ่ม '+ รับ TCUT' เพื่อรับเพิ่ม" },
+  { q: "TCUT ไม่ขึ้นใน MetaMask Tokens list", a: "MetaMask ซ่อน testnet tokens เมื่ออยู่ใน 'All popular networks' — สลับไปที่ Sepolia network แล้วกด 'Custom tokens' ถึงจะเห็น ยอดในเว็บถูกต้องเสมอ" },
+  { q: "Retire แล้วขึ้น Unauthorized / error", a: "ตรวจว่า contract addresses ใน frontend .env ตรงกับที่ deploy ล่าสุด และ RetireCertificate กับ CarbonCreditToken ต้องชี้ไปที่ CarbonMarket address ปัจจุบัน" },
   { q: "ปุ่มค้าง หมุนไม่จบ", a: "เปิด MetaMask ดูว่ามี transaction รอ confirm อยู่ไหม ถ้ามีให้ confirm หรือ cancel ก่อน" },
   { q: "Marketplace ว่าง ไม่เห็น Credits", a: "โครงการต้องผ่านขั้นตอน Submit → Verify → Stake → Mint ครบก่อน ถึงจะปรากฏในตลาด" },
   { q: "อัปโหลดหลักฐานไม่ได้", a: "รองรับ PDF, JPG, PNG ขนาดไม่เกิน 10MB และ backend ต้องออนไลน์อยู่" },
@@ -183,8 +208,8 @@ export default function ManualPage() {
 
   const roleConfig = {
     developer: { label: "🌱 Developer", sub: "ยื่นโครงการและสร้างเครดิต", active: "bg-emerald-600 text-white", inactive: "bg-white text-gray-600 hover:bg-emerald-50" },
-    verifier:  { label: "🔍 Verifier",  sub: "ตรวจสอบและอนุมัติ",          active: "bg-blue-600 text-white",    inactive: "bg-white text-gray-600 hover:bg-blue-50" },
-    buyer:     { label: "🛒 Buyer",     sub: "ซื้อและใช้ Carbon Credits",   active: "bg-amber-500 text-white",   inactive: "bg-white text-gray-600 hover:bg-amber-50" },
+    verifier: { label: "🔍 Verifier", sub: "ตรวจสอบและอนุมัติ", active: "bg-blue-600 text-white", inactive: "bg-white text-gray-600 hover:bg-blue-50" },
+    buyer: { label: "🛒 Buyer", sub: "ซื้อและใช้ Carbon Credits", active: "bg-amber-500 text-white", inactive: "bg-white text-gray-600 hover:bg-amber-50" },
   };
 
   return (
@@ -207,65 +232,6 @@ export default function ManualPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-10">
-
-        {/* ── What is this ── */}
-        <section className="bg-gradient-to-br from-emerald-50 via-white to-teal-50 border border-emerald-100 rounded-3xl p-7 shadow-sm">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-emerald-500 mb-2">ระบบนี้คืออะไร</p>
-          <h2 className="text-2xl font-bold text-gray-900 leading-snug">
-            ตลาดซื้อขาย Carbon Credit<br />
-            <span className="text-emerald-600">ที่ตรวจสอบได้ทุกขั้นตอน</span>
-          </h2>
-          <p className="mt-3 text-sm leading-7 text-gray-500 max-w-2xl">
-            แพลตฟอร์มนี้ช่วยให้โครงการลดคาร์บอน (เช่น ปลูกป่า, พลังงานสะอาด) สามารถออก Carbon Credit เป็น Token ดิจิทัล
-            แล้วขายให้กับบริษัทที่อยากลด carbon footprint — ทุกขั้นตอนถูกบันทึกถาวร ไม่มีใครแก้ไขหรือปลอมแปลงได้
-          </p>
-
-          {/* Why blockchain — simple analogy */}
-          <div className="mt-5 grid sm:grid-cols-3 gap-3">
-            {[
-              { icon: "🔍", title: "โปร่งใส 100%", body: "ทุกการซื้อขายมี receipt ถาวร ตรวจสอบได้ตลอดเวลา" },
-              { icon: "🤝", title: "ไม่มีตัวกลาง", body: "กฎทำงานอัตโนมัติ ไม่ต้องรอ broker หรือ admin" },
-              { icon: "🛡️", title: "กันปลอม", body: "ใบรับรอง offset เป็น NFT ไม่มีใครสร้างปลอมได้" },
-            ].map(c => (
-              <div key={c.title} className="bg-white border border-gray-200 rounded-2xl p-4">
-                <p className="text-2xl mb-2">{c.icon}</p>
-                <p className="text-sm font-semibold text-gray-900">{c.title}</p>
-                <p className="text-xs text-gray-500 mt-1 leading-5">{c.body}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Lifecycle flow ── */}
-        <section>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">วงจรชีวิตของ Carbon Credit</p>
-
-          {/* Flow diagram */}
-          <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-sm overflow-x-auto">
-            <div className="flex items-start gap-1 min-w-max mx-auto w-fit">
-              {FLOW.map((step, i) => (
-                <div key={step.label} className="flex items-start">
-                  <div className="flex flex-col items-center gap-2 w-20">
-                    <div className={`w-14 h-14 rounded-2xl border-2 flex items-center justify-center text-2xl shadow-sm ${FLOW_COLOR[step.color]}`}>
-                      {step.icon}
-                    </div>
-                    <p className="text-xs font-semibold text-gray-800 text-center leading-4">{step.label}</p>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${FLOW_COLOR[step.color]}`}>
-                      {step.sub}
-                    </span>
-                  </div>
-                  {i < FLOW.length - 1 && (
-                    <div className="flex items-center mt-5 mx-0.5">
-                      <div className="w-6 h-0.5 bg-gray-300" />
-                      <div className="w-0 h-0 border-t-4 border-t-transparent border-b-4 border-b-transparent border-l-8 border-l-gray-300" />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* ── Role Tabs + Steps ── */}
         <section>
           <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">คู่มือตามบทบาท</p>
@@ -276,9 +242,8 @@ export default function ManualPage() {
               <button
                 key={r}
                 onClick={() => setRole(r)}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all shadow-sm ${
-                  role === r ? roleConfig[r].active + " border-transparent shadow-md" : "border-gray-200 " + roleConfig[r].inactive
-                }`}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all shadow-sm ${role === r ? roleConfig[r].active + " border-transparent shadow-md" : "border-gray-200 " + roleConfig[r].inactive
+                  }`}
               >
                 {roleConfig[r].label}
                 <span className={`ml-2 text-[11px] font-normal ${role === r ? "opacity-80" : "text-gray-400"}`}>
@@ -288,23 +253,45 @@ export default function ManualPage() {
             ))}
           </div>
 
+          {/* Buyer quick-start banner */}
+          {role === "buyer" && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6">
+              <p className="font-bold text-amber-900 text-sm mb-3">🚀 Buyer Quick-Start — ทำตามลำดับนี้ครั้งแรก</p>
+              <ol className="space-y-2">
+                {[
+                  { step: "01", label: "รับ Sepolia ETH", desc: "ค่า gas — ไป Google พิมพ์ 'Sepolia faucet'" },
+                  { step: "02", label: "รับ TCUT", desc: "กดปุ่ม '+ รับ TCUT' มุมขวาบน → รับฟรี หรือซื้อด้วย ETH" },
+                  { step: "03", label: "Enable TCUT", desc: "กดแถบสีส้มใน Marketplace → ยืนยัน MetaMask (ครั้งเดียว)" },
+                  { step: "04", label: "ซื้อ Carbon Credits", desc: "เลือกโครงการ → กรอกจำนวน → Buy Credits → ยืนยัน MetaMask" },
+                  { step: "05", label: "Retire & รับ NFT", desc: "My Portfolio → Retire & Get NFT Certificate → ยืนยัน MetaMask" },
+                ].map(s => (
+                  <li key={s.step} className="flex items-start gap-3">
+                    <span className="text-[10px] font-bold bg-amber-200 text-amber-800 rounded-full w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">{s.step}</span>
+                    <span className="text-sm text-amber-900"><strong>{s.label}</strong> <span className="text-amber-700 font-normal">— {s.desc}</span></span>
+                  </li>
+                ))}
+              </ol>
+              <p className="text-xs text-amber-600 mt-3 border-t border-amber-200 pt-3">
+                💡 ทุก transaction ต้องใช้ Sepolia ETH เป็นค่า gas แม้แต่รับ TCUT ฟรีก็ตาม
+              </p>
+            </div>
+          )}
+
           {/* Steps */}
           <div className="space-y-3">
             {steps.map((step, i) => (
               <div key={i} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm flex gap-4">
                 {/* Number + icon */}
                 <div className="flex flex-col items-center gap-1.5 shrink-0">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl border-2 ${
-                    role === "developer" ? "bg-emerald-50 border-emerald-200" :
-                    role === "verifier"  ? "bg-blue-50 border-blue-200" :
-                                          "bg-amber-50 border-amber-200"
-                  }`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl border-2 ${role === "developer" ? "bg-emerald-50 border-emerald-200" :
+                      role === "verifier" ? "bg-blue-50 border-blue-200" :
+                        "bg-amber-50 border-amber-200"
+                    }`}>
                     {step.icon}
                   </div>
-                  <span className={`text-[10px] font-bold ${
-                    role === "developer" ? "text-emerald-400" :
-                    role === "verifier"  ? "text-blue-400" : "text-amber-400"
-                  }`}>
+                  <span className={`text-[10px] font-bold ${role === "developer" ? "text-emerald-400" :
+                      role === "verifier" ? "text-blue-400" : "text-amber-400"
+                    }`}>
                     {String(i + 1).padStart(2, "0")}
                   </span>
                 </div>
@@ -317,25 +304,45 @@ export default function ManualPage() {
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${
                         step.tag.includes("MetaMask")
                           ? "bg-orange-100 text-orange-700"
+                          : step.tag === "ทำก่อนอย่างอื่น"
+                          ? "bg-red-100 text-red-700"
+                          : step.tag === "แนะนำทำ"
+                          ? "bg-blue-100 text-blue-700"
                           : "bg-gray-100 text-gray-500"
                       }`}>
-                        {step.tag.includes("MetaMask") ? "🦊 " : ""}{step.tag}
+                        {step.tag.includes("MetaMask") ? "🦊 " : step.tag === "ทำก่อนอย่างอื่น" ? "⚠️ " : ""}{step.tag}
                       </span>
                     )}
                   </div>
                   <p className="text-sm text-gray-500 mt-1.5 leading-6">{step.body}</p>
-                  {step.link && (
-                    <Link
-                      to={step.link}
-                      className={`inline-flex items-center gap-1 mt-3 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
-                        role === "developer" ? "bg-emerald-600 text-white hover:bg-emerald-700" :
-                        role === "verifier"  ? "bg-blue-600 text-white hover:bg-blue-700" :
-                                              "bg-amber-500 text-white hover:bg-amber-600"
-                      }`}
-                    >
-                      {step.linkLabel} →
-                    </Link>
+                  {step.mono && (
+                    <p className="mt-2 font-mono text-[11px] bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 break-all select-all">
+                      {step.mono}
+                    </p>
                   )}
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {step.link && (
+                      <Link
+                        to={step.link}
+                        className={`inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${role === "developer" ? "bg-emerald-600 text-white hover:bg-emerald-700" :
+                            role === "verifier" ? "bg-blue-600 text-white hover:bg-blue-700" :
+                              "bg-amber-500 text-white hover:bg-amber-600"
+                          }`}
+                      >
+                        {step.linkLabel} →
+                      </Link>
+                    )}
+                    {step.externalLink && (
+                      <a
+                        href={step.externalLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-700 text-white hover:bg-gray-900 transition-colors"
+                      >
+                        {step.externalLinkLabel}
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -377,8 +384,8 @@ export default function ManualPage() {
                 },
                 {
                   icon: "☀️", badge: "NASA POWER", badgeColor: "bg-blue-100 text-blue-700",
-                  title: "NASA POWER — ข้อมูล climate ปี 2023",
-                  body: "ดึงค่าเฉลี่ยแสงอาทิตย์ (W/m²) และปริมาณฝน (mm/day) ทั้งปี 2023 ที่พิกัดจังหวัด ไม่ต้องใช้ API key — ฟรีและเปิดสาธารณะ",
+                  title: "NASA POWER — ข้อมูล climate",
+                  body: "ดึงค่าเฉลี่ยแสงอาทิตย์ (W/m²) และปริมาณฝน (mm/day) ที่พิกัดจังหวัด ไม่ต้องใช้ API key — ฟรีและเปิดสาธารณะ",
                   used: "→ historicalConfidence",
                 },
                 {
@@ -466,7 +473,7 @@ export default function ManualPage() {
                 </table>
               </div>
               <p className="text-[11px] text-emerald-700 mt-3 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
-                💡 ตั้งแต่เวอร์ชันล่าสุด Developer สามารถกรอก <strong>พิกัด GPS จริงของพื้นที่โครงการ</strong> (Latitude / Longitude) ได้ที่หน้า Submit Project — ระบบจะใช้พิกัดนั้นสำหรับ MODIS + NASA + OWM ทั้งหมด ถ้าไม่กรอกถึงจะ fallback เป็นพิกัดตัวเมืองจังหวัด
+                Developer สามารถกรอก <strong>พิกัด GPS จริงของพื้นที่โครงการ</strong> (Latitude / Longitude) ได้ที่หน้า Submit Project — ระบบจะใช้พิกัดนั้นสำหรับ MODIS + NASA + OWM ทั้งหมด ถ้าไม่กรอกถึงจะ fallback เป็นพิกัดตัวเมืองจังหวัด
               </p>
             </div>
           </div>
@@ -500,9 +507,9 @@ export default function ManualPage() {
           <div className="grid sm:grid-cols-2 gap-3">
             {[
               { to: "/explorer", icon: "🔭", title: "Traceability Explorer", body: "ค้นหาโครงการ แล้วดูว่า Credit นั้นผ่านขั้นตอนอะไรมาบ้าง มี tx hash พิสูจน์ได้ทุกก้าว", color: "sky" },
-              { to: "/dao",      icon: "🏛️", title: "DAO Governance",        body: "โหวตเปลี่ยนกฎของระบบ เช่น ใครเป็น Verifier หรือค่าธรรมเนียมเท่าไหร่ ใช้ CGOV token", color: "violet" },
-              { to: "/oracle",   icon: "🌤️", title: "Oracle — NASA Data",   body: "ดูข้อมูล climate จาก NASA POWER ที่ระบบใช้คำนวณ Risk Score ของแต่ละโครงการ", color: "amber" },
-              { to: "/admin",    icon: "📊", title: "Admin Dashboard",       body: "ภาพรวมระบบ — จำนวนโครงการ, สถิติ risk, leaderboard ผู้ตรวจสอบ และสถานะ DAO", color: "gray" },
+              { to: "/dao", icon: "🏛️", title: "DAO Governance", body: "โหวตเปลี่ยนกฎของระบบ เช่น ใครเป็น Verifier หรือค่าธรรมเนียมเท่าไหร่ ใช้ CGOV token", color: "violet" },
+              { to: "/oracle", icon: "🌤️", title: "Oracle — NASA Data", body: "ดูข้อมูล climate จาก NASA POWER ที่ระบบใช้คำนวณ Risk Score ของแต่ละโครงการ", color: "amber" },
+              { to: "/admin", icon: "📊", title: "Admin Dashboard", body: "ภาพรวมระบบ — จำนวนโครงการ, สถิติ risk, leaderboard ผู้ตรวจสอบ และสถานะ DAO", color: "gray" },
             ].map(t => (
               <Link
                 key={t.to}
@@ -518,47 +525,6 @@ export default function ManualPage() {
             ))}
           </div>
         </section>
-
-        {/* ── Troubleshoot accordion ── */}
-        <section>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-4">แก้ปัญหาที่พบบ่อย</p>
-          <div className="space-y-2">
-            {ISSUES.map((item, i) => (
-              <div key={i} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-                <button
-                  onClick={() => setOpenIssue(openIssue === i ? null : i)}
-                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-base">❓</span>
-                    <p className="text-sm font-semibold text-gray-800">{item.q}</p>
-                  </div>
-                  <span className={`text-gray-400 text-lg transition-transform ${openIssue === i ? "rotate-180" : ""}`}>▾</span>
-                </button>
-                {openIssue === i && (
-                  <div className="px-5 pb-4 flex gap-3">
-                    <span className="text-emerald-500 text-base shrink-0">✅</span>
-                    <p className="text-sm text-gray-600 leading-6">{item.a}</p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── CTA ── */}
-        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-3xl p-7 text-white text-center shadow-lg">
-          <p className="text-2xl mb-2">🌿</p>
-          <h3 className="text-lg font-bold">พร้อมเริ่มใช้งานแล้วใช่ไหม?</h3>
-          <p className="text-sm opacity-80 mt-1 mb-5">เชื่อม MetaMask แล้วเลือกบทบาทของคุณได้เลย</p>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 bg-white text-emerald-700 font-semibold text-sm px-6 py-2.5 rounded-xl hover:bg-emerald-50 transition-colors shadow-sm"
-          >
-            เริ่มใช้งาน →
-          </Link>
-        </div>
-
       </main>
     </div>
   );

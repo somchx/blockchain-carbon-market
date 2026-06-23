@@ -136,7 +136,6 @@ export default function RoleSelect() {
             </p>
             <h1 className="text-3xl font-bold leading-tight text-gray-900 sm:text-4xl">
               ตลาดซื้อขายคาร์บอนเครดิตบน Blockchain<br />
-              <span className="text-xl font-semibold text-emerald-600 sm:text-2xl">ตรวจสอบได้ ลดการใช้ซ้ำ</span>
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-gray-500">
               ระบบนี้พัฒนาขึ้นเพื่อแก้ปัญหาสำคัญของตลาดคาร์บอนเครดิต ได้แก่ ความโปร่งใสของข้อมูล ความน่าเชื่อถือของโครงการ

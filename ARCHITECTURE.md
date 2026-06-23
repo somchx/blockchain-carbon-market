@@ -1,395 +1,786 @@
-# สถาปัตยกรรมระบบ Thailand Carbon Credit Market บน Blockchain
+# Blockchain Carbon Market Architecture and Business Flow
 
-> **Research Prototype** — Sepolia Testnet | มิถุนายน 2026  
-> เปรียบเทียบสิ่งที่วางแผนไว้ vs สิ่งที่ implement จริง พร้อม tech stack และ API ที่ใช้
-
----
-
-## ภาพรวมระบบ
-
-ระบบนี้คือ **ต้นแบบตลาดซื้อขายคาร์บอนเครดิตบน Blockchain** ที่ทำให้ Carbon Credit ตรวจสอบได้ โปร่งใส และลดปัญหาเครดิตปลอม/ใช้ซ้ำ โดยใช้ Ethereum Sepolia Testnet เป็นฐาน
+> Thailand Carbon Credit Market Research Prototype  
+> Network: Ethereum Sepolia Testnet  
+> ฉบับอธิบายสำหรับผู้อ่านที่ยังไม่รู้ระบบมาก่อน
 
 ---
 
-## 1. สถาปัตยกรรมที่วางแผน vs ที่ implement จริง
+## 1. ภาพรวมของระบบ
 
-### Users / Stakeholders
+### ระบบนี้ถูกสร้างขึ้นมาเพื่อแก้ปัญหาอะไร
 
-| กลุ่ม | วางแผน | ที่ทำจริง |
+ตลาดคาร์บอนเครดิตแบบเดิมมักมีปัญหาหลัก 4 เรื่อง
+
+1. ข้อมูลไม่โปร่งใส  
+   ผู้ซื้ออาจไม่รู้ว่าคาร์บอนเครดิตที่ซื้อ มาจากโครงการอะไร และผ่านการตรวจสอบจริงหรือไม่
+
+2. ตรวจสอบย้อนหลังยาก  
+   เมื่อเครดิตถูกขายต่อหลายครั้ง การตรวจสอบประวัติการถือครองหรือการใช้งานทำได้ยาก
+
+3. ความน่าเชื่อถือของโครงการไม่เท่ากัน  
+   บางโครงการอาจขอเครดิตเกินจริง หรือมีข้อมูลไม่สอดคล้องกับสภาพพื้นที่จริง
+
+4. เสี่ยงต่อการใช้ซ้ำ หรือ Double Counting  
+   เครดิตเดียวกันอาจถูกนับซ้ำ หรือถูกนำไปใช้ offset มากกว่าหนึ่งครั้ง
+
+ระบบนี้จึงถูกออกแบบให้ใช้ Blockchain, Smart Contract, IPFS, External APIs และ Risk Assessment Engine มาช่วยให้ทุกขั้นตอนของวงจรชีวิตคาร์บอนเครดิตตรวจสอบได้ตั้งแต่ต้นจนจบ
+
+---
+
+### ผู้ใช้งานแต่ละประเภทมีใครบ้าง
+
+ระบบนี้มีผู้เกี่ยวข้องหลัก 5 กลุ่ม
+
+1. Project Developer  
+   ผู้พัฒนาโครงการลดคาร์บอน เช่น โครงการปลูกป่า ป่าชายเลน พลังงานแสงอาทิตย์ หรือก๊าซชีวภาพ
+
+2. Verifier / Assessor  
+   ผู้ตรวจประเมินโครงการ ทำหน้าที่ตรวจสอบข้อมูลและอนุมัติผลการประเมินบน Blockchain
+
+3. Buyer  
+   ผู้ซื้อคาร์บอนเครดิต เพื่อนำไปถือครอง ซื้อขายต่อ หรือใช้ offset การปล่อยคาร์บอน
+
+4. Regulator / Observer  
+   ผู้ติดตามตรวจสอบระบบ เช่น หน่วยงานกำกับดูแลหรือผู้สังเกตการณ์ ใช้ Explorer และ Admin Dashboard เพื่อตรวจสอบความโปร่งใส
+
+5. Community / DAO  
+   กลุ่มผู้ถือ Governance Token ที่ร่วมกำหนดกติกาของระบบผ่านการโหวต
+
+---
+
+### แต่ละ Role ทำหน้าที่อะไร และต่างกันอย่างไร
+
+| Role | หน้าที่หลัก | สิ่งที่ทำในระบบ |
 |---|---|---|
-| Project Developer | ✅ | ✅ มีหน้า `/developer` ครบ: submit, stake, mint |
-| Verifier / Oracle | ✅ | ✅ มีหน้า `/verifier` — Assessor wallet approve on-chain |
-| Buyer | ✅ | ✅ มีหน้า `/buyer` — ซื้อ, portfolio, retire, NFT |
-| Regulator / Observer | ✅ | ✅ มีหน้า `/explorer` (Traceability) และ `/admin` |
-| Community / DAO | ✅ | ✅ มีหน้า `/dao` — Governor contract, CGOV token |
+| Project Developer | สร้าง supply ของคาร์บอนเครดิต | ยื่นโครงการ, ส่งข้อมูล, วางหลักประกัน, อัปโหลดหลักฐาน, mint credits, ตั้งราคาขาย |
+| Verifier / Assessor | ตรวจสอบความถูกต้อง | ดู risk signals, เปิด evidence, approve assessment บน chain |
+| Buyer | สร้าง demand และใช้เครดิต | ซื้อเครดิต, ถือใน portfolio, retire credits, รับใบรับรอง NFT |
+| Regulator / Observer | ตรวจสอบความโปร่งใส | ดู transaction history, event logs, project status, leaderboard |
+| DAO / Community | กำกับดูแลระบบ | เสนอ proposal, โหวตเปลี่ยน parameter, เปลี่ยน assessor หรือค่าธรรมเนียม |
 
-### Data Input
+ความต่างสำคัญคือ
 
-| แหล่งข้อมูล | วางแผน | ที่ทำจริง |
-|---|---|---|
-| IoT / Sensors | ✅ วางแผน | ⚠️ **แทนด้วย NASA MODIS NDVI** (ดาวเทียมวัดความเขียวพืช 250m ทุก 16 วัน) |
-| External Data / ดาวเทียม | ✅ | ✅ MODIS NDVI + MODIS Land Cover + NASA POWER API + OpenWeatherMap |
-| Manual Input / เอกสาร | ✅ | ✅ อัปโหลดไฟล์ PDF/รูปขึ้น IPFS ผ่าน Pinata |
-
-> **หมายเหตุ:** IoT sensor จริงยังไม่ได้ต่อเข้ามา ใช้ดาวเทียม MODIS เป็น proxy แทน ให้ค่าใกล้เคียงกว่า weather API ทั่วไป
-
-### Blockchain System Core — 6 ขั้น
-
-| ขั้น | วางแผน | ที่ทำจริง |
-|---|---|---|
-| Data Submission & Staking | ✅ | ✅ Developer กรอกฟอร์ม → ระบบประเมิน risk → submit on-chain → deposit TCUT stake |
-| Verification | ✅ | ✅ Assessor wallet เรียก `assessProject()` on-chain ผ่าน MetaMask |
-| Mint Carbon Credit | ✅ | ✅ ERC-1155 (ไม่ใช่ ERC-20 ตามแผน) — 1 token = 1 tCO₂, แยก tokenId ตาม projectId |
-| Trading | ✅ | ✅ Marketplace ใน contract (ไม่ใช่ DEX ภายนอก) — list ราคา, ซื้อด้วย TCUT |
-| Staking & Slashing | ✅ | ✅ `depositProjectStake()`, `openChallenge()`, `finalizeChallenge()` ใน contract |
-| Reputation | ✅ | ✅ trustScore บน chain, Trust Leaderboard ใน `/admin` |
-
-### สิ่งที่ตัดออกจากแผนเดิม
-
-| รายการ | เหตุผล |
-|---|---|
-| DEX ภายนอก (Uniswap-style) | ใช้ marketplace ใน contract แทน — เรียบง่ายกว่า เหมาะกับ prototype |
-| Stablecoin (USDC/THB Coin) | ใช้ TCUT (ERC-20 utility token) แทน — ไม่ต้อง integrate payment gateway ภายนอก |
-| Standards & Registry (Verra/Gold Standard) | ไม่ integrate — เป็น prototype, ไม่ได้ขอรับรองมาตรฐานจริง |
-| Mobile App | ไม่ได้ทำ — web dashboard เพียงพอสำหรับ prototype |
-| Challenge Period แบบ 3 วัน (ผ่าน UI) | contract มีอยู่ แต่ UI ไม่ได้เปิดใช้ เพราะรอ 3 วันไม่เหมาะกับ demo |
+- Developer เป็นฝ่ายสร้างเครดิต
+- Verifier เป็นฝ่ายอนุมัติ
+- Buyer เป็นฝ่ายใช้เครดิต
+- Observer เป็นฝ่ายตรวจสอบ
+- DAO เป็นฝ่ายกำกับกติกาของระบบ
 
 ---
 
-## 2. Tech Stack จริงที่ใช้
+## 2. System Flow แบบ End-to-End
 
-### Smart Contracts (Blockchain Layer)
+ส่วนนี้คือภาพธุรกิจของระบบตั้งแต่ต้นจนจบ
 
-| Contract | มาตรฐาน | หน้าที่ | Deploy Address (Sepolia) |
-|---|---|---|---|
-| `CarbonMarket.sol` | Custom | Core logic ทั้งหมด: submit, assess, stake, mint, buy, retire | `0x604058B4...4e4b` |
-| `PlatformToken.sol` | ERC-20 | TCUT token — ใช้เป็น utility token ทั้งระบบ | `0xe51A5687...4ec5` |
-| `CarbonCreditToken.sol` | ERC-1155 | Carbon Credit Token — แยก tokenId ต่อโปรเจกต์ | `0x7117D4fc...ec07` |
-| `RetireCertificate.sol` | ERC-721 | NFT ใบรับรองการ offset — mint เมื่อ retire credits | `0xF63997bD...f44` |
-| `GovernanceToken.sol` | ERC-20 (Votes) | CGOV token — ใช้โหวตใน DAO | `0x856D3bec...cB` |
-| `GovernorDAO.sol` | OpenZeppelin Governor | DAO governance — propose, vote, execute | `0x7F208C3b...9Db` |
-| `RiskOracleConsumer.sol` | Chainlink Functions | Oracle สำหรับดึง NASA POWER data on-chain | `0xaa6D3708...2c6` |
+### ขั้นที่ 1: Project Owner หรือ Project Developer ยื่นโครงการ
 
-**Framework:** Hardhat v2.24 + Solidity ^0.8.24  
-**Library:** OpenZeppelin Contracts v5.0.2, Chainlink Contracts v1.4.0  
-**Testing:** 51+ unit tests (Hardhat + Jest)  
-**Network:** Ethereum Sepolia Testnet (Chain ID: 11155111)
+Developer เริ่มต้นโดยกรอกข้อมูลโครงการในหน้า `/developer`
 
----
+ข้อมูลที่ส่งเข้าไปมีตัวอย่างเช่น
 
-### Backend (API Layer)
+- ชื่อโครงการ
+- จังหวัด
+- ประเภทโครงการ เช่น forest, mangrove, solar, biogas
+- ขนาดพื้นที่
+- จำนวนเครดิตที่ขอ
+- ปริมาณการลดคาร์บอนที่รายงานเอง
+- ปีของเครดิต
+- เอกสารหลักฐาน
 
-**Runtime:** Node.js + TypeScript  
-**Framework:** Express v4.21  
-**Deploy:** [Render.com](https://render.com) (free tier, auto-deploy จาก GitHub)  
-**URL:** `https://blockchain-carbon-market.onrender.com/api`
-
-#### API Endpoints
-
-| Method | Path | หน้าที่ |
-|---|---|---|
-| `GET` | `/health` | Health check |
-| `GET` | `/projects` | ดึงรายการโครงการทั้งหมด |
-| `GET` | `/projects/:id` | ดึงโปรเจกต์เดี่ยว |
-| `POST` | `/projects/assess` | ประเมิน risk score (เรียก NASA APIs + คำนวณ) |
-| `POST` | `/projects/:id/evidence` | อัปโหลดไฟล์หลักฐาน → IPFS → บันทึก DB |
-| `GET` | `/projects/:id/evidence` | ดูรายการ evidence files |
-| `GET` | `/leaderboard` | Trust leaderboard ของ Developer |
-| `GET` | `/admin/stats` | สถิติโครงการทั้งหมด |
-| `GET` | `/oracle/climate` | ดึง climate data ณ lat/lon ที่ระบุ |
-| `POST` | `/retire/certificate` | สร้างไฟล์ PDF ใบรับรองการ retire |
-
-#### Middleware & Libraries
-
-| Package | Version | ใช้ทำอะไร |
-|---|---|---|
-| `express` | v4.21 | HTTP server |
-| `multer` | v2.2 | รับไฟล์ upload (PDF/รูป, max 10MB) |
-| `zod` | v3.23 | Validate request body |
-| `@prisma/client` | v6.19 | ORM สำหรับ PostgreSQL |
-| `node-fetch` | v3.3 | เรียก NASA/MODIS/OpenWeatherMap APIs |
-| `form-data` | v4.0 | ส่งไฟล์ไปยัง Pinata IPFS |
+หน้าที่ของขั้นนี้คือให้ระบบรู้ว่าโครงการต้องการขอคาร์บอนเครดิตเท่าไร และอ้างว่าลดคาร์บอนได้มากน้อยแค่ไหน
 
 ---
 
-### Database
+### ขั้นที่ 2: ระบบประเมินความเสี่ยงของโครงการ
 
-**Provider:** [Neon](https://neon.tech) — PostgreSQL Serverless  
-**ORM:** Prisma v6.19  
-**Schema:** 2 tables
+หลังจาก Developer กรอกข้อมูลแล้ว Backend จะคำนวณ Risk Assessment
+
+ระบบใช้ข้อมูลจาก 2 ส่วน
+
+1. ข้อมูลที่ผู้ใช้กรอกเอง
+2. ข้อมูลภายนอกจาก API
+
+ข้อมูลภายนอกที่ใช้จริงในระบบนี้ได้แก่
+
+- NASA POWER API  
+  ใช้ดูค่าแสงแดดเฉลี่ยและปริมาณฝนในพื้นที่โครงการ
+
+- OpenWeatherMap API  
+  ใช้ดูข้อมูลสภาพอากาศปัจจุบัน เช่น อุณหภูมิ ความชื้น และเมฆ
+
+- MODIS / satellite-derived signals  
+  ใช้ช่วยประเมินความเหมาะสมของพื้นที่และลักษณะโครงการ
+
+ผลลัพธ์ที่ได้จาก Risk Engine คือ
+
+- `riskScore`
+- `trustScore`
+- `approvedCredits`
+- `requiredStake`
+- `recommendation`
+
+พูดง่าย ๆ คือระบบพยายามตอบคำถามว่า
+
+- โครงการนี้ดูน่าเชื่อถือแค่ไหน
+- จำนวนเครดิตที่ขอมาดูสมเหตุสมผลไหม
+- ควรต้องวางหลักประกันเท่าไร
+
+---
+
+### ขั้นที่ 3: ใครเป็นผู้อนุมัติ
+
+ผู้อนุมัติคือ Verifier หรือ Assessor
+
+เมื่อ Developer ส่งข้อมูลแล้ว Verifier จะเปิดหน้า `/verifier` เพื่อดู
+
+- ข้อมูลโครงการ
+- risk score
+- trust score
+- climate signals
+- ไฟล์หลักฐานจาก IPFS
+
+ถ้า Verifier เห็นว่าโครงการสมเหตุสมผล จึงจะกด approve และเรียกฟังก์ชัน `assessProject()` บน Smart Contract
+
+ดังนั้น Backend เป็นผู้ “คำนวณ”
+แต่ Verifier เป็นผู้ “ตัดสินใจอนุมัติ”
+
+---
+
+### ขั้นที่ 4: การวางหลักประกัน (Collateral / Stake)
+
+หลังได้รับผลประเมิน Developer ต้องวางหลักประกันก่อนจะ mint เครดิตได้
+
+#### วางเพื่ออะไร
+
+การวางหลักประกันมีไว้เพื่อสร้างแรงจูงใจให้ Developer ส่งข้อมูลที่ถูกต้อง  
+ถ้าภายหลังพบว่าโครงการ fraud หรือข้อมูลไม่จริง stake นี้สามารถถูก slash ได้
+
+#### วางด้วย token อะไร
+
+ใช้ `TCUT Token`
+
+TCUT คือ utility token ของระบบ ใช้สำหรับ
+
+- stake
+- buy
+- reward
+
+#### จำนวนคิดอย่างไร
+
+จำนวน stake มาจากผลประเมินความเสี่ยง
+
+แนวคิดคือ
+
+- ถ้า risk สูง ต้องวางมากขึ้น
+- ถ้า approved credits สูง จำนวน stake ก็เพิ่มขึ้น
+
+กล่าวอีกแบบหนึ่งคือ stake ทำหน้าที่คล้าย “เงินค้ำประกัน”
+
+#### หากไม่ผ่านจะเกิดอะไรขึ้น
+
+- ถ้า Verifier ไม่ approve โครงการจะไม่สามารถเข้าสู่ขั้น mint credits ได้
+- ถ้าภายหลังโดน challenge และ fraud ได้รับการยืนยัน ระบบสามารถ slash stake
+
+---
+
+### ขั้นที่ 5: Oracle, NASA API และ OpenWeather API มีหน้าที่อย่างไร
+
+#### NASA POWER / OpenWeather อยู่ตรงไหน
+
+ทั้งสอง API ถูกใช้ใน Backend Risk Engine
+
+- NASA POWER ใช้ดูข้อมูลภูมิอากาศเชิง historical
+- OpenWeatherMap ใช้ดูสภาพอากาศปัจจุบัน
+
+ข้อมูลเหล่านี้ช่วยให้การประเมินไม่ต้องพึ่งแค่คำบอกเล่าจากผู้ยื่นโครงการ
+
+#### Oracle มีหน้าที่อะไร
+
+Oracle ในระบบนี้ทำหน้าที่เป็นตัวเชื่อมข้อมูลภายนอกเข้าสู่โลกของ Blockchain
+
+ปกติ Smart Contract ไม่สามารถเรียก API ภายนอกได้เองโดยตรง  
+จึงต้องมี Oracle มาช่วยนำข้อมูลภายนอกเข้ามา
+
+ในโปรเจกต์นี้ใช้ `RiskOracleConsumer.sol`
+
+บทบาทของมันคือ
+
+- ดึงหรือรับข้อมูล NASA POWER เข้าสู่ on-chain context
+- เก็บผล climate data บางส่วนบน chain
+
+หมายเหตุสำคัญ:
+
+ใน prototype ปัจจุบัน Oracle ยังอยู่ในโหมด demo/simulated fulfill ผ่าน `ownerFulfill()` มากกว่าการใช้งาน Chainlink production เต็มรูปแบบ
+
+---
+
+### ขั้นที่ 6: การออก Carbon Credits
+
+Carbon Credit จะถูกสร้างก็ต่อเมื่อ
+
+1. โครงการถูก submit
+2. ผ่านการประเมินและ approve
+3. Developer วาง stake ครบ
+4. Developer เรียก `mintAndListCredits()`
+
+#### ถูก Mint เป็น token ประเภทใด
+
+ถูก mint เป็น `ERC-1155`
+
+#### เหตุใดจึงเลือก ERC-1155
+
+เพราะคาร์บอนเครดิตในระบบนี้มีลักษณะว่า
+
+- แต่ละโครงการต้องแยกกันชัดเจน
+- แต่ในโครงการเดียวกันมีเครดิตได้หลายหน่วย
+
+ตัวอย่าง
+
+- Project A มี 800 credits
+- Project B มี 300 credits
+
+ERC-1155 เหมาะมากเพราะ
+
+- contract เดียวรองรับหลาย `tokenId`
+- `tokenId` แต่ละตัวแทนแต่ละโครงการ
+- แต่ละ `tokenId` มีหลายหน่วยได้
+
+ในระบบนี้แนวคิดคือ
+
+`1 token = 1 tCO2`
+
+---
+
+### ขั้นที่ 7: การนำ Carbon Credit เข้าสู่ Marketplace
+
+หลัง mint แล้ว Developer จะเป็นผู้ลงขาย
+
+#### ใครขายได้
+
+ผู้ที่ขายได้คือ Developer เจ้าของโครงการนั้น
+
+#### ตั้งราคาอย่างไร
+
+Developer ระบุราคาต่อ 1 credit ตอนเรียก `mintAndListCredits()`
+
+ตัวอย่างเช่น
+
+- 100 TCUT ต่อ 1 credit
+
+#### ข้อมูลถูกเก็บที่ใด
+
+ข้อมูลของสินทรัพย์ถูกเก็บแยกกัน 2 ที่
+
+- on-chain: จำนวนเครดิต, ราคา, status, ownership, events
+- off-chain / IPFS: หลักฐานโครงการและ metadata บางส่วน
+
+---
+
+### ขั้นที่ 8: การซื้อ Carbon Credit
+
+Buyer เข้าไปที่หน้า `/buyer` เพื่อดูรายการเครดิตที่ขายอยู่
+
+#### Buyer ต้องเตรียมอะไรบ้าง
+
+- MetaMask (เชื่อมต่อกับ Sepolia network)
+- Sepolia ETH สำหรับจ่าย gas ทุก transaction
+- TCUT สำหรับจ่ายราคาเครดิต
+
+#### Buyer รับ TCUT ได้อย่างไร
+
+ระบบมี contract แยกต่างหากชื่อ `TCUTSale` สำหรับแจก TCUT ให้ Buyer
+
+Buyer ทำได้ 2 วิธี
+- กด "รับฟรี (Faucet)" — รับ TCUT ฟรีผ่าน `claimFree()` โดยไม่เสีย TCUT แต่ยังต้องมี ETH จ่าย gas
+- กด "ซื้อด้วย ETH" — แลก Sepolia ETH เป็น TCUT ผ่าน `buyWithETH()` ในอัตราที่ contract กำหนด
+
+หลังได้ TCUT แล้ว Buyer สามารถกดปุ่ม "เพิ่มใน MetaMask" เพื่อ import token address `0xe51A5687ad95b737D6DF0DF89CD2419375214ec5` ให้ MetaMask แสดงยอดด้วย
+
+#### TCUT มีบทบาทอย่างไร
+
+TCUT คือ token กลางที่ใช้จ่ายใน marketplace  
+Buyer ไม่ได้ใช้ ETH ซื้อเครดิตโดยตรง แต่ใช้ ETH จ่าย gas และใช้ TCUT จ่ายราคาสินค้า
+
+#### ซื้อขายกันด้วย Token อะไร
+
+ใช้ `TCUT (ERC-20)`
+
+#### Smart Contract ตัวใดทำงาน
+
+ตัวหลักคือ `CarbonMarket`
+
+ก่อนซื้อครั้งแรก Buyer ต้อง "Enable TCUT" ก่อนหนึ่งครั้ง โดย approve `MaxUint256` ให้ `CarbonMarket` contract ใช้ TCUT แทนได้
 
 ```
-CarbonProject   — เก็บข้อมูลโครงการ + risk assessment
-EvidenceFile    — เก็บ metadata ของไฟล์ที่อัปโหลด (ไฟล์จริงอยู่บน IPFS)
+TCUT.approve(CarbonMarket, MaxUint256)
 ```
+
+การ approve แบบ `MaxUint256` ทำให้ Buyer ไม่ต้อง approve ซ้ำทุกครั้งที่ซื้อ ระบบ frontend จะตรวจ allowance ตอนโหลดหน้า ถ้า allowance > 999,999 TCUT ถือว่า Enable แล้ว ปุ่ม "Enable TCUT" จะไม่แสดง
+
+หลัง Enable แล้ว Buyer กด "Buy Credits" แล้วยืนยันใน MetaMask ครั้งเดียว ระบบเรียก `buyCredits()` บน `CarbonMarket` โดยตรง
+
+เมื่อซื้อสำเร็จ
+
+- TCUT ถูกหักจาก Buyer ผ่าน `transferFrom`
+- ส่วนหนึ่งไป treasury
+- ส่วนหนึ่งไป Developer
+- Carbon Credit ERC-1155 ถูกโอนให้ Buyer
 
 ---
 
-### Frontend (UI Layer)
+### ขั้นที่ 9: การ Offset Carbon
 
-**Framework:** React v18.3 + TypeScript + Vite v5.4  
-**CSS:** Tailwind CSS v4.3  
-**Routing:** React Router DOM v7.18  
-**Blockchain:** ethers.js v6.15  
-**Deploy:** [Vercel](https://vercel.com) (auto-deploy จาก GitHub main branch)  
-**URL:** `https://blockchain-carbon-market-frontend.vercel.app`
+Buyer จะกด offset หรือ retire เมื่อเขาต้องการ “ใช้” เครดิตจริง ไม่ใช่แค่ถือหรือซื้อขายต่อ
 
-#### หน้าทั้งหมด
+#### Offset แล้วเกิดอะไรขึ้น
 
-| Path | หน้าที่ |
-|---|---|
-| `/` | Landing page — เลือก role, system flow |
-| `/manual` | คู่มือการใช้งาน — visual flow, อธิบาย risk score |
-| `/developer` | Submit โครงการ, ดู assessment, stake, mint |
-| `/verifier` | ตรวจสอบ signals, approve on-chain |
-| `/buyer` | Marketplace, ซื้อ credit, portfolio, retire |
-| `/explorer` | Traceability — event log ทุก transaction บน Sepolia |
-| `/dao` | DAO Governance — propose, vote, execute |
-| `/oracle` | Oracle monitor — NASA POWER data on-chain |
-| `/admin` | Admin dashboard — risk distribution, leaderboard |
+ระบบจะเรียก `retireCredits()`
 
----
+#### Carbon Credit ถูก Burn หรือ Retire อย่างไร
 
-### IPFS Storage
+เครดิต ERC-1155 ของ Buyer จะถูก burn ออกจากกระเป๋า
 
-**Provider:** [Pinata](https://pinata.cloud)  
-**ใช้เก็บ:** ไฟล์ evidence (PDF/รูป) ของแต่ละโปรเจกต์  
-**Gateway:** `https://gateway.pinata.cloud/ipfs/{CID}`  
-**ทำงานยังไง:** Frontend ส่งไฟล์ → Backend รับ (multer) → อัปโหลดไปยัง Pinata API → ได้ CID กลับมา → บันทึก CID ใน Neon DB → Frontend แสดง link
+หมายความว่าเครดิตนั้น
+
+- ถูกใช้ไปแล้ว
+- ไม่สามารถขายต่อได้อีก
+- ไม่สามารถนำกลับมา offset ซ้ำได้
+
+#### ป้องกัน Double Counting อย่างไร
+
+การ burn token เป็นหัวใจสำคัญของการป้องกัน Double Counting
+
+เพราะเมื่อเครดิตถูก retire แล้ว จำนวนคงเหลือของ token ลดลงจริงบน chain  
+จึงไม่มีใครนำเครดิตหน่วยเดิมไปใช้ซ้ำได้อีก
 
 ---
 
-## 3. External APIs ที่ใช้จริง
+### ขั้นที่ 10: การออกใบรับรอง
 
-### NASA MODIS — ORNL DAAC API
-**URL:** `https://modis.ornl.gov/rst/api/v1`  
-**ต้องการ API Key:** ❌ ฟรี ไม่ต้องลงทะเบียน  
-**ใช้ทำอะไร:** 2 products
+เมื่อ retire สำเร็จ ระบบจะออกใบรับรองให้ Buyer
 
-| Product | Resolution | Period | ใช้คำนวณ |
-|---|---|---|---|
-| MOD13Q1 (NDVI) | 250m | ทุก 16 วัน | `iotConfidence` — วัดความเขียวพืชว่าสอดคล้องกับ project type ไหม |
-| MCD12Q1 (Land Cover) | 500m | รายปี (IGBP) | `governmentConfidence` — cross-validate ว่าพื้นที่จริงเป็น forest/urban/crop |
+#### ใบรับรองถูกสร้างเมื่อไร
 
-**ตัวอย่าง NDVI logic:**
-- Forest/Mangrove: NDVI สูง (> 0.5) → iotConfidence สูง
-- Solar: NDVI ต่ำ (< 0.2, พื้นโล่ง) → iotConfidence สูง
-- ChiangMai city center (IGBP class 13 = Urban) → governmentConfidence ต่ำสำหรับ forest claim
+สร้างทันทีหลังเรียก `retireCredits()` สำเร็จ
 
-### NASA POWER API
-**URL:** `https://power.larc.nasa.gov/api/temporal/monthly/point`  
-**ต้องการ API Key:** ❌ ฟรี ไม่ต้องลงทะเบียน  
-**ใช้ทำอะไร:** ดึงข้อมูลเฉลี่ยรายปีที่พิกัด lat/lon ของโครงการ
+#### ใช้ token มาตรฐานอะไร
 
-| Parameter | ใช้คำนวณ |
-|---|---|
-| ALLSKY_SFC_SW_DWN (W/m²) | Solar irradiance → `historicalConfidence` สำหรับ solar project |
-| PRECTOTCORR (mm/day) | ปริมาณฝน → `historicalConfidence` สำหรับ forest/biogas |
+ใช้ `ERC-721`
 
-### OpenWeatherMap API
-**URL:** `https://api.openweathermap.org/data/2.5/weather`  
-**ต้องการ API Key:** ✅ ใช้ OPENWEATHER_API_KEY ใน backend `.env`  
-**ใช้ทำอะไร:** ดึงข้อมูล weather ปัจจุบัน ณ วันที่ submit
+#### เหตุใดจึงเลือก ERC-721
 
-| Field | ใช้คำนวณ |
-|---|---|
-| temp (°C) | weather_temperature |
-| humidity (%) | weather_humidity → ส่งผลต่อ anomaly detection |
-| clouds (%) | weather_cloudCover → quality flag สำหรับ NDVI |
+เพราะใบรับรองแต่ละใบไม่ซ้ำกัน
 
-### Chainlink Functions (Oracle)
-**Network:** Sepolia  
-**ใช้ทำอะไร:** ดึง NASA POWER data on-chain ผ่าน `RiskOracleConsumer.sol`  
-**สถานะ:** Deploy แล้ว แต่ subscription LINK ยังไม่ได้ fund — ใช้ backend API ทำงานแทนในปัจจุบัน
+ใบหนึ่งอ้างอิงถึง
+
+- ผู้ใช้คนหนึ่ง
+- โครงการหนึ่ง
+- จำนวนเครดิตที่ retire
+- เวลา retire
+
+ดังนั้นมันเหมาะกับ NFT ที่ไม่ซ้ำกันมากกว่าการใช้ ERC-20 หรือ ERC-1155
+
+#### ใบรับรองมีข้อมูลอะไรบ้าง
+
+ในระดับธุรกิจ ใบรับรองจะมีข้อมูลเช่น
+
+- projectId
+- ผู้ retire
+- จำนวน credits retired
+- เวลา retire
+- token URI ที่ชี้ไปยัง metadata / ไฟล์ใบรับรองบน IPFS
 
 ---
 
-## 4. Risk Assessment Engine
+## 3. วิเคราะห์ Smart Contracts ทั้งหมด
 
-หัวใจของระบบ — คำนวณใน `backend/src/riskEngine.ts` โดยใช้ข้อมูลจาก `dataAggregator.ts`
+### 3.1 CarbonMarket
 
-### แหล่งข้อมูล 4 ทาง
+นี่คือ contract หลักของระบบ
 
-```
-iotConfidence        ← NASA MODIS NDVI          weight: 30%
-governmentConfidence ← NASA MODIS Land Cover    weight: 30%
-historicalConfidence ← NASA POWER API           weight: 25%
-userInputConfidence  ← ข้อมูลที่กรอกเอง        weight: 15%
-```
+หน้าที่สำคัญ
 
-### สูตรคำนวณ
+- รับ submit project
+- เก็บ project state
+- รับผล assessment
+- รับ stake
+- mint และ list credits
+- ซื้อ credits
+- retire credits
+- challenge / slash / reward
 
-```
-confidenceBlend = iot×30% + government×30% + historical×25% + userInput×15%
-
-riskScore = clamp(100 − blend + (anomalyScore × 0.45) − (additionalityScore × 0.2), 5, 95)
-
-approvedReduction = selfReported × (blend/100) × ((100 − risk)/100)
-approvedCredits   = min(requestedCredits, approvedReduction)
-
-stakeMultiplier = 0.4 + (riskScore/100) × 1.8
-requiredStake   = max(100, approvedCredits × multiplier)  [หน่วย TCUT]
-```
-
-### TGO Rate Validation
-
-ตรวจสอบว่า credits ที่ขอไม่เกินขีดจำกัดของ Thailand GHG Organization:
-
-| ประเภทโครงการ | สูงสุด (tCO₂/ไร่/ปี) |
-|---|---|
-| Forest | 3.5 |
-| Mangrove | 6.0 |
-| Solar | 8.0 |
-| Biogas | 5.0 |
-
-### Risk Level
-
-| Risk Score | ระดับ | ความหมาย |
-|---|---|---|
-| < 45 | 🟢 Low Risk | ข้อมูลน่าเชื่อถือ — ผ่านได้ |
-| 45–69 | 🟡 Med Risk | มีความไม่สอดคล้อง — Verifier ควรตรวจเพิ่ม |
-| ≥ 70 | 🔴 High Risk | ขัดแย้งชัดเจน — ไม่ผ่านเกณฑ์ |
+พูดง่าย ๆ คือเป็น “ศูนย์กลางธุรกิจ” ของระบบทั้งหมด
 
 ---
 
-## 5. System Flow จริงที่ทำงานบน Sepolia
+### 3.2 TCUT Token (ERC-20)
 
-```
-1. Developer กรอกฟอร์ม (province, type, area, credits)
-         ↓
-2. Backend ดึง NASA MODIS + NASA POWER + OpenWeatherMap
-   คำนวณ Risk Score + Required Stake + TGO validation
-         ↓
-3. Developer กด "Submit On-Chain"
-   → MetaMask ① → market.submitProject() → Pending
-         ↓
-4. Developer อัปโหลด evidence → Pinata IPFS → CID บันทึกใน Neon
-         ↓
-5. Developer กด Approve Token + Deposit Stake
-   → MetaMask ② (approve TCUT) → MetaMask ③ (depositStake) → Staked
-         ↓
-6. Verifier ตรวจ signals + evidence IPFS
-   Assessor wallet กด "Approve On-Chain"
-   → MetaMask ④ → market.assessProject() → Assessed
-         ↓
-7. Developer กด "Mint & List"
-   → MetaMask ⑤ → market.mintAndListCredits() → Minted
-   → ERC-1155 Carbon Credit Token mint บน chain
-         ↓
-8. Buyer เข้า Marketplace → กด Buy
-   → MetaMask ⑥ (approve TCUT) → MetaMask ⑦ (buyCredits) → ได้ token
-         ↓
-9. Buyer กด Retire
-   → MetaMask ⑧ → market.retireCredits() → burn ERC-1155 → mint ERC-721 NFT
-   → Backend สร้าง PDF certificate → upload IPFS
-         ↓
-10. Traceability Explorer
-    อ่าน event logs จาก Sepolia ผ่าน Tenderly RPC
-    แสดง full journey ของทุก credit พร้อม tx hash
-```
+contract นี้คือ utility token ของระบบ
+
+หน้าที่
+
+- ใช้เป็น token สำหรับ stake
+- ใช้ซื้อ carbon credits
+- ใช้จ่าย reward
+
+เหตุผลที่ใช้ ERC-20 เพราะหน่วยทุกหน่วยเหมือนกันหมด เหมาะกับบทบาท “เงินในระบบ”
 
 ---
 
-## 6. การ Deploy
+### 3.2b TCUTSale
 
-### Smart Contracts
-```bash
-cd contracts
-npx hardhat run scripts/deploy.ts --network sepolia
+contract แยกต่างหากสำหรับแจก TCUT ให้ Buyer ที่เพิ่งเข้าระบบ
+
+หน้าที่
+
+- `claimFree()` — แจก TCUT ฟรีตามจำนวนที่กำหนด สามารถเรียกซ้ำได้ตามใจ (testnet)
+- `buyWithETH()` — รับ Sepolia ETH และโอน TCUT ให้ในอัตราที่ owner กำหนด
+
+เหตุผลที่แยกออกมาเป็น contract ต่างหาก เพราะ faucet / sale logic ไม่ควรปะปนกับ utility token หลัก และสามารถปิดหรือเปลี่ยนอัตราได้โดยไม่กระทบ TCUT contract
+
+---
+
+### 3.3 Carbon Credit Token (ERC-1155)
+
+contract นี้เก็บ carbon credits ที่ถูกออกจากแต่ละโครงการ
+
+หน้าที่
+
+- mint carbon credits
+- เก็บ balance ของแต่ละ projectId
+- burn credits ตอน retire
+
+เหตุผลที่ใช้ ERC-1155 เพราะต้องการแยกหลาย project ใน contract เดียว และแต่ละ project มีหลายหน่วยได้
+
+---
+
+### 3.4 Retire Certificate (ERC-721)
+
+contract นี้ใช้สำหรับใบรับรองหลัง retire
+
+หน้าที่
+
+- mint certificate ให้ผู้ที่ retire credits
+- เก็บข้อมูล certificate ต่อ tokenId
+- ชี้ token URI ไปยัง metadata/ไฟล์ใบรับรอง
+
+เหตุผลที่ใช้ ERC-721 เพราะ certificate แต่ละใบไม่เหมือนกัน
+
+---
+
+### 3.5 CGOV Token
+
+contract นี้คือ governance token
+
+หน้าที่
+
+- ใช้เป็นสิทธิ์โหวตใน DAO
+- ผู้ถือ token สามารถ delegate และ vote ได้
+
+มันไม่ได้ใช้ซื้อเครดิตหรือ stake แต่ใช้ในมุม governance
+
+---
+
+### 3.6 GovernorDAO
+
+contract นี้คือกลไก DAO
+
+หน้าที่
+
+- รับ proposal
+- ให้โหวต
+- นับคะแนน
+- execute proposal ที่ผ่าน
+
+เช่น
+
+- เปลี่ยน assessor
+- เปลี่ยน platform fee
+- เปลี่ยน parameter บางอย่างของระบบ
+
+---
+
+### 3.7 Chainlink Oracle / RiskOracleConsumer
+
+contract นี้มีหน้าที่เชื่อมข้อมูลภายนอกเข้ามาในโลก on-chain
+
+หน้าที่หลัก
+
+- request climate data
+- เก็บผลที่ได้
+- serve เป็นจุดอ้างอิงสำหรับ on-chain logic หรือ dashboard
+
+ใน prototype นี้มันยังทำงานในโหมด demo มากกว่าการใช้ production oracle เต็มรูปแบบ
+
+---
+
+### Contract ไหนเรียก Contract ไหน
+
+ความสัมพันธ์หลักมีดังนี้
+
+- `CarbonMarket` เรียก `CarbonCreditToken` ตอน mint / burn credits
+- `CarbonMarket` เรียก `RetireCertificate` ตอนออก NFT certificate
+- `CarbonMarket` โต้ตอบกับ `TCUT` ตอน stake, buy, reward, slash
+- `GovernorDAO` ใช้ `CGOV` เป็นสิทธิ์ออกเสียง
+- `RiskOracleConsumer` แยกออกมาต่างหากเพื่อจัดการข้อมูลภายนอก
+
+---
+
+### ข้อมูลไหลอย่างไร
+
+ลำดับข้อมูลแบบง่าย
+
+1. User ส่งข้อมูลเข้า Frontend
+2. Frontend ส่งไป Backend
+3. Backend เรียก APIs ภายนอกและคำนวณ risk
+4. Verifier approve ผลประเมินขึ้น `CarbonMarket`
+5. `CarbonMarket` mint / buy / retire โดยเรียก token contracts ที่เกี่ยวข้อง
+
+---
+
+### เหตุใดจึงต้องแยกหลาย Contract แทนรวมเป็น Contract เดียว
+
+เพราะแต่ละส่วนมีหน้าที่คนละแบบ
+
+- market logic
+- payment token
+- asset token
+- certificate NFT
+- governance
+- oracle
+
+ข้อดีของการแยก
+
+1. อ่านง่ายและดูแลง่าย
+2. ปรับปรุงเฉพาะส่วนได้
+3. ลดความซับซ้อนของแต่ละ contract
+4. แยกความรับผิดชอบชัดเจน
+5. เหมาะกับการ audit มากกว่า contract ใหญ่ก้อนเดียว
+
+---
+
+## 4. วิเคราะห์ Token Flow
+
+### 4.1 TCUT
+
+#### ถูกสร้างเมื่อไร
+
+ถูก mint ตอน deploy `PlatformToken`
+
+#### ใครถือครอง
+
+เริ่มต้น owner ถือ supply ก้อนแรก  
+จากนั้น owner อาจแจกหรือโอนให้ developer / buyer / reviewer
+
+#### Buyer รับ TCUT ได้อย่างไร
+
+Buyer ใช้ `TCUTSale` contract
+
+- `claimFree()` — รับฟรีโดยไม่ต้องจ่าย TCUT แต่ต้องมี Sepolia ETH จ่าย gas
+- `buyWithETH()` — จ่าย Sepolia ETH แลก TCUT ในอัตราที่กำหนด
+
+#### Buyer ต้อง Enable ก่อนซื้อ
+
+ก่อนซื้อครั้งแรก Buyer ต้อง approve `MaxUint256` ให้ `CarbonMarket` ใช้ TCUT แทน  
+เรียกว่า "Enable TCUT" ทำครั้งเดียว ระบบ frontend ตรวจ allowance อัตโนมัติ
+
+#### โอนเมื่อไร
+
+- TCUTSale แจก TCUT ให้ buyer (faucet หรือ ETH swap)
+- buyer จ่ายให้ market flow ตอนซื้อเครดิต ผ่าน `transferFrom`
+- developer stake เข้า contract
+- contract จ่าย reward
+
+#### ใช้ทำอะไร
+
+- stake (Developer)
+- ซื้อ carbon credits (Buyer)
+- reward
+- treasury fee
+
+#### หมดอายุหรือไม่
+
+ไม่หมดอายุ
+
+#### ถูก burn หรือไม่
+
+ปกติไม่ถูก burn ใน flow หลักของระบบนี้
+
+---
+
+### 4.2 Carbon Credit Token
+
+#### ถูกสร้างเมื่อไร
+
+ถูก mint หลัง project ผ่าน approve และ stake ครบ
+
+#### ใครถือครอง
+
+ตอน mint ใหม่ ๆ contract market ถือ inventory ก่อน  
+หลัง buyer ซื้อ จึงย้ายไปอยู่ใน wallet ของ buyer
+
+#### โอนเมื่อไร
+
+ตอนซื้อขายใน marketplace
+
+#### ใช้ทำอะไร
+
+- ถือเป็น carbon credit
+- ซื้อขาย
+- retire
+
+#### หมดอายุหรือไม่
+
+ไม่มี expiry logic โดยตรงใน contract ปัจจุบัน แต่มี vintage year เป็น metadata ของโครงการ
+
+#### ถูก burn หรือไม่
+
+ถูก burn ตอน retire
+
+---
+
+### 4.3 Retire Certificate
+
+#### ถูกสร้างเมื่อไร
+
+ถูก mint ตอน buyer retire credits
+
+#### ใครถือครอง
+
+ผู้ที่ retire credits
+
+#### โอนเมื่อไร
+
+mint ให้ retiree ตอน retire สำเร็จ  
+เชิงเทคนิค ERC-721 สามารถโอนได้ แต่บทบาทหลักคือเป็นใบรับรอง
+
+#### ใช้ทำอะไร
+
+เป็นหลักฐานว่า offset แล้วจริง
+
+#### หมดอายุหรือไม่
+
+ไม่หมดอายุ
+
+#### ถูก burn หรือไม่
+
+โดยทั่วไปไม่ burn ใน flow ปัจจุบัน
+
+---
+
+### 4.4 CGOV
+
+#### ถูกสร้างเมื่อไร
+
+mint ตอน deploy `GovernanceToken`
+
+#### ใครถือครอง
+
+เริ่มต้น owner/deployer ถือ supply แรก  
+จากนั้นกระจายให้ผู้ร่วม governance ได้
+
+#### โอนเมื่อไร
+
+โอนระหว่างผู้ใช้งานหรือแจกให้ผู้เข้าร่วม DAO
+
+#### ใช้ทำอะไร
+
+ใช้โหวตใน DAO
+
+#### หมดอายุหรือไม่
+
+ไม่หมดอายุ
+
+#### ถูก burn หรือไม่
+
+ปัจจุบันไม่มี flow burn หลัก
+
+---
+
+## 5. สรุปเป็น Flow Diagram
+
+```text
+Project Owner / Developer
+↓
+Submit Project
+↓
+Risk Assessment from Backend (NASA, OpenWeatherMap, MODIS)
+↓
+Verifier Approval  →  assessProject() on CarbonMarket
+↓
+Collateral Deposit (TCUT stake)
+↓
+Credit Issuance  →  mintAndListCredits() → ERC-1155 minted
+↓
+Marketplace Listing
+↓
+                    [Buyer onboarding]
+                    Get Sepolia ETH (gas)
+                    ↓
+                    Claim TCUT via TCUTSale.claimFree()
+                    or Buy TCUT via TCUTSale.buyWithETH()
+                    ↓
+                    Enable TCUT (approve MaxUint256, once)
+↓
+Buyer Purchase  →  buyCredits() → TCUT transferFrom → ERC-1155 transferred
+↓
+Retire Credits  →  retireCredits() → ERC-1155 burned + metadata pinned on IPFS
+↓
+NFT Certificate Issued  →  RetireCertificate.mint() → ERC-721 to Buyer
 ```
-- Deploy ครั้งเดียว ได้ address ทั้ง 7 contracts
-- บันทึก addresses ใน `contracts/deployments/sepolia.json`
-- Auto-generate `sepolia.frontend.env` สำหรับ copy ไปใส่ Vercel
 
-### Backend
-- **Platform:** Render.com (Web Service, free tier)
-- **Auto-deploy:** push ไป GitHub main → Render build ใหม่อัตโนมัติ
-- **Build command:** `npm run build` (tsc compile)
-- **Start command:** `node dist/server.js`
-- **Environment Variables ใน Render:**
-  - `DATABASE_URL` — Neon PostgreSQL connection string
-  - `DATABASE_URL_DIRECT` — Neon direct connection
-  - `OPENWEATHER_API_KEY` — OpenWeatherMap API key
-  - `PINATA_JWT` — Pinata JWT token
-  - `PINATA_GATEWAY` — Pinata gateway URL
+### อธิบายแต่ละขั้นตอนแบบเข้าใจง่าย
 
-### Frontend
-- **Platform:** Vercel
-- **Auto-deploy:** push ไป GitHub main → Vercel build ใหม่อัตโนมัติ
-- **Build command:** `npm run build` (Vite)
-- **Environment Variables ใน Vercel (VITE_ prefix, baked at build time):**
-  - `VITE_API_BASE_URL` — Render backend URL
-  - `VITE_MARKET_ADDRESS` — CarbonMarket contract address
-  - `VITE_UTILITY_TOKEN_ADDRESS` — TCUT token address
-  - `VITE_CARBON_TOKEN_ADDRESS` — ERC-1155 address
-  - `VITE_RETIRE_CERTIFICATE_ADDRESS` — ERC-721 address
-  - `VITE_GOVERNANCE_TOKEN_ADDRESS` — CGOV address
-  - `VITE_GOVERNOR_ADDRESS` — GovernorDAO address
-  - `VITE_ORACLE_ADDRESS` — Chainlink oracle address
-  - `VITE_ASSESSOR_ADDRESS` — Assessor wallet address
-  - `VITE_CHAIN_ID` — 11155111 (Sepolia)
+#### 1. Submit Project
+ผู้พัฒนาโครงการส่งข้อมูลว่าโครงการนี้ลดคาร์บอนได้อย่างไร และขอรับเครดิตเท่าไร
 
----
+#### 2. Risk Assessment from Backend
+ระบบใช้ข้อมูลภายนอกและข้อมูลที่ผู้ใช้กรอกมาคำนวณว่าโครงการน่าเชื่อถือแค่ไหน
 
-## 7. DAO Governance
+#### 3. Verifier Approval
+ผู้ตรวจประเมินดูข้อมูลทั้งหมดแล้วตัดสินใจว่าจะ approve หรือไม่
 
-**Contract:** OpenZeppelin Governor (standard)  
-**Voting Token:** CGOV (GovernanceToken.sol) — total supply 1,000,000 CGOV
+#### 4. Collateral Deposit (TCUT)
+Developer วางหลักประกันเป็น TCUT เพื่อค้ำความถูกต้องของข้อมูล
 
-**Flow:**
-1. Proposer สร้าง proposal (ระบุ target contract + calldata ที่จะ execute)
-2. Voting period — ผู้ถือ CGOV vote FOR/AGAINST/ABSTAIN
-3. ถ้าผ่าน quorum + majority → execute ได้
-4. CarbonMarket ownership โอนไปยัง GovernorDAO แล้ว — admin calls ต้องผ่าน DAO vote
+#### 5. Credit Issuance (ERC-1155)
+เมื่อผ่านเงื่อนไขครบ ระบบจึงออก carbon credits เป็น token
 
-**ตัวอย่าง parameter ที่ DAO ควบคุมได้:**
-- `setAssessor(address)` — เปลี่ยนผู้ตรวจสอบ
-- `setTreasury(address)` — เปลี่ยน treasury
-- `setReviewerBond(uint256)` — เปลี่ยนค่า bond ของ reviewer
-- `platformFeeBps` — ค่าธรรมเนียมแพลตฟอร์ม (ปัจจุบัน 2%)
+#### 6. Marketplace Listing
+Developer ตั้งราคาและนำเครดิตเข้าสู่ marketplace
+
+#### 7. Buyer Purchase using TCUT
+Buyer รับ TCUT ผ่าน TCUTSale (faucet หรือซื้อด้วย ETH) จากนั้น Enable TCUT ครั้งเดียว (approve MaxUint256) แล้วกด Buy Credits โดยไม่ต้อง approve ซ้ำทุกครั้ง ระบบใช้ `transferFrom` หัก TCUT และโอน Carbon Credit ERC-1155 เข้า wallet ทันที
+
+#### 8. Carbon Offset
+เมื่อ buyer ต้องการใช้เครดิตเพื่อลดคาร์บอนจริง เขาจะเข้าสู่ขั้น offset
+
+#### 9. Retire Credit (Burn)
+เครดิตถูก burn ออกจากระบบ ทำให้ไม่สามารถใช้ซ้ำได้
+
+#### 10. NFT Certificate Issued
+ระบบออกใบรับรองเป็น NFT เพื่อยืนยันว่า offset สำเร็จแล้ว
 
 ---
 
-## 8. Limitation ของ Prototype นี้
+## บทสรุปสุดท้าย
 
-| รายการ | Limitation |
-|---|---|
-| Network | Sepolia Testnet — ไม่ใช่ Mainnet, token ไม่มีมูลค่าจริง |
-| TCUT Token | ไม่มี faucet อัตโนมัติ — ต้องโอนให้ผู้ใช้ด้วยมือ |
-| IoT Sensor | ใช้ MODIS ดาวเทียมแทน — พิกัดอาจไม่ตรงพื้นที่จริงถ้าไม่กรอก GPS |
-| Challenge System | Contract พร้อม แต่ UI ไม่ได้เปิด เพราะรอ deadline 3 วัน |
-| Chainlink Oracle | Deploy แล้วแต่ยังไม่ได้ fund LINK subscription |
-| Standards | ไม่ได้ integrate Verra / Gold Standard จริง |
-| Scalability | Backend บน Render free tier — cold start ~30 วินาที |
+ในเชิงธุรกิจ ระบบนี้คือแพลตฟอร์มที่ทำให้ “คาร์บอนเครดิต” กลายเป็นสินทรัพย์ดิจิทัลที่ตรวจสอบได้
 
----
+ในเชิงเทคนิค ระบบนี้แยกส่วนสำคัญออกเป็นหลาย contract เพื่อให้
 
-## 9. Repository Structure
+- เงินในระบบ มี token ของตัวเอง
+- คาร์บอนเครดิต มี token ของตัวเอง
+- ใบรับรอง มี NFT ของตัวเอง
+- governance มี token และ DAO ของตัวเอง
 
-```
-blockchain_project/
-├── contracts/          # Solidity contracts + Hardhat
-│   ├── src/            # 7 Solidity files
-│   ├── scripts/        # deploy.ts, deploy-oracle.ts, redeploy-market.ts
-│   ├── test/           # unit tests
-│   └── deployments/    # address JSON + frontend.env
-├── backend/            # Express API server
-│   ├── src/
-│   │   ├── server.ts           # Express entry point
-│   │   ├── routes.ts           # API routes
-│   │   ├── riskEngine.ts       # Risk score calculation
-│   │   ├── dataAggregator.ts   # NASA/MODIS/OWM API calls
-│   │   ├── store.ts            # DB read/write (Prisma)
-│   │   ├── ipfsService.ts      # Pinata upload
-│   │   └── certificateService.ts # PDF generation
-│   └── prisma/schema.prisma    # DB schema
-└── frontend/           # React + Vite app
-    └── src/
-        ├── pages/      # 8 pages (developer, verifier, buyer, etc.)
-        ├── components/ # WalletBar, EvidenceUpload
-        └── lib/        # web3.ts, contracts.ts (ABI), storage.ts
-```
+ผลคือทุกฝ่ายเห็นภาพเดียวกันว่า
 
----
+- เครดิตมาจากไหน
+- ผ่านการตรวจสอบหรือยัง
+- ถูกซื้อโดยใคร
+- ถูกใช้ไปแล้วหรือยัง
+- และมีหลักฐานถาวรหรือไม่
 
-*อัปเดตล่าสุด: มิถุนายน 2026*
+นี่คือเหตุผลที่ระบบนี้เหมาะจะใช้เป็นต้นแบบสำหรับอธิบายทั้ง Business Flow, Token Flow และ Smart Contract Architecture ของตลาดคาร์บอนเครดิตบน Blockchain

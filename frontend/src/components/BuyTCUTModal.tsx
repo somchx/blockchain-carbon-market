@@ -33,8 +33,9 @@ export default function BuyTCUTModal({ provider, account, onClose, onSuccess }: 
   const [ethInput, setEthInput] = useState("0.001");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [msg, setMsg] = useState<{ text: string; ok: boolean; noGas?: boolean } | null>(null);
   const [addingToWallet, setAddingToWallet] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   async function load() {
     try {
@@ -89,6 +90,8 @@ export default function BuyTCUTModal({ provider, account, onClose, onSuccess }: 
         setMsg({ text: "ยกเลิกโดยผู้ใช้", ok: false });
       } else if (err.includes("FaucetCooldownActive") || err.includes("Too soon")) {
         setMsg({ text: "ยังไม่ครบ 24 ชั่วโมง ลองใหม่ทีหลัง", ok: false });
+      } else if (err.includes("insufficient funds") || err.includes("intrinsic")) {
+        setMsg({ text: "ไม่มี Sepolia ETH สำหรับค่า gas", ok: false, noGas: true });
       } else {
         setMsg({ text: err.slice(0, 160), ok: false });
       }
@@ -117,8 +120,8 @@ export default function BuyTCUTModal({ provider, account, onClose, onSuccess }: 
       const err = e instanceof Error ? e.message : String(e);
       if (err.includes("rejected") || err.includes("denied")) {
         setMsg({ text: "ยกเลิกโดยผู้ใช้", ok: false });
-      } else if (err.includes("insufficient funds")) {
-        setMsg({ text: "ETH ไม่พอ — ขอ Sepolia ETH จาก faucet.google.com ก่อน", ok: false });
+      } else if (err.includes("insufficient funds") || err.includes("intrinsic")) {
+        setMsg({ text: "ไม่มี Sepolia ETH สำหรับค่า gas", ok: false, noGas: true });
       } else {
         setMsg({ text: err.slice(0, 160), ok: false });
       }
@@ -147,12 +150,13 @@ export default function BuyTCUTModal({ provider, account, onClose, onSuccess }: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
           <div>
             <h2 className="text-lg font-bold text-gray-900">TCUT Token</h2>
             <p className="text-xs text-gray-400 mt-0.5">Thai Carbon Utility Token · Sepolia</p>
+            <p className="text-xs text-orange-500 mt-1">กด "เพิ่มใน MetaMask" เพื่อแสดง TCUT ใน MetaMask</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -225,9 +229,40 @@ export default function BuyTCUTModal({ provider, account, onClose, onSuccess }: 
                     </div>
                   )}
 
-                  {msg && (
+                  {msg && !msg.noGas && (
                     <div className={`text-xs rounded-xl px-4 py-2.5 mb-4 text-center ${msg.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
                       {msg.text}
+                    </div>
+                  )}
+
+                  {msg?.noGas && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4 text-xs text-red-700 space-y-2">
+                      <p className="font-semibold">ไม่มี Sepolia ETH สำหรับค่า gas</p>
+                      <p className="text-red-600 leading-5">ทุก transaction บน blockchain ต้องจ่ายค่า gas เล็กน้อยเป็น ETH — แม้แต่การขอ TCUT ฟรีก็ตาม</p>
+                      <div>
+                        <p className="text-red-500 mb-1">ขอ Sepolia ETH ฟรีได้ที่:</p>
+                        <a
+                          href="https://cloud.google.com/application/web3/faucet/ethereum/sepolia"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="underline font-medium text-red-700 break-all"
+                        >
+                          cloud.google.com › web3 › faucet › sepolia
+                        </a>
+                      </div>
+                      <div>
+                        <p className="text-red-500 mb-1">ใส่ address นี้:</p>
+                        <div className="flex items-center gap-2 bg-white border border-red-200 rounded-lg px-2 py-1.5">
+                          <span className="font-mono text-[10px] text-gray-700 flex-1 truncate">{account}</span>
+                          <button
+                            type="button"
+                            onClick={() => { void navigator.clipboard.writeText(account); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                            className="flex-shrink-0 text-[10px] bg-red-100 hover:bg-red-200 text-red-700 px-2 py-0.5 rounded font-medium transition-colors"
+                          >
+                            {copied ? "✓ copied" : "copy"}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -293,9 +328,33 @@ export default function BuyTCUTModal({ provider, account, onClose, onSuccess }: 
                     </div>
                   )}
 
-                  {msg && (
+                  {msg && !msg.noGas && (
                     <div className={`text-xs rounded-xl px-4 py-2.5 mb-4 break-all ${msg.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
                       {msg.text}
+                    </div>
+                  )}
+
+                  {msg?.noGas && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4 text-xs text-red-700 space-y-2">
+                      <p className="font-semibold">ไม่มี Sepolia ETH สำหรับค่า gas</p>
+                      <a
+                        href="https://cloud.google.com/application/web3/faucet/ethereum/sepolia"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block underline font-medium text-red-700"
+                      >
+                        ขอ ETH ฟรีที่ Google Sepolia Faucet →
+                      </a>
+                      <div className="flex items-center gap-2 bg-white border border-red-200 rounded-lg px-2 py-1.5">
+                        <span className="font-mono text-[10px] text-gray-700 flex-1 truncate">{account}</span>
+                        <button
+                          type="button"
+                          onClick={() => { void navigator.clipboard.writeText(account); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                          className="flex-shrink-0 text-[10px] bg-red-100 hover:bg-red-200 text-red-700 px-2 py-0.5 rounded font-medium transition-colors"
+                        >
+                          {copied ? "✓ copied" : "copy"}
+                        </button>
+                      </div>
                     </div>
                   )}
 
