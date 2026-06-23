@@ -2,7 +2,7 @@ services:
   - type: web
     name: carbon-market-backend
     env: node
-    buildCommand: npm install --include=dev && npm run prisma:generate -w backend && npm run build -w backend
+    buildCommand: npm install --include=dev && npm run prisma:generate -w backend && npm run prisma:migrate -w backend && npm run build -w backend
     startCommand: node backend/dist/server.js
     plan: free
     envVars:

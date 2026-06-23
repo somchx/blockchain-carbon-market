@@ -134,7 +134,12 @@ export default function VerifierDashboard() {
 
   async function fetchVerifierAccess(walletAddress: string): Promise<boolean> {
     const res = await fetch(`${apiBase}/verifier-access/${walletAddress}`);
-    if (!res.ok) throw new Error("Failed to check verifier access");
+    if (!res.ok) {
+      if (res.status === 404) {
+        throw new Error("Verifier access API is not available on the current backend deployment");
+      }
+      throw new Error("Failed to check verifier access");
+    }
     const data: VerifierAccessResponse = await res.json();
     const approved = data.hasAccess && data.status === "approved";
     setHasVerifierAccess(approved);
