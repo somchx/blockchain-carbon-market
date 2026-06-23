@@ -3,13 +3,12 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import EvidenceUpload from "../../components/EvidenceUpload";
 import WalletBar from "../../components/WalletBar";
-import { getConnectedWallet, getContractConfig, getContracts, type WalletState } from "../../lib/web3";
+import { getConnectedWallet, getContracts, readWalletBalances, type WalletState } from "../../lib/web3";
 import { loadProjectMap, saveProjectMap, type OnChainProjectMap } from "../../lib/storage";
 import type { StoredProject, ProjectForm, ProjectType, OnChainProject } from "../../types";
 import { PROJECT_STATUS } from "../../types";
 
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000/api";
-const config = getContractConfig();
 
 const initialForm: ProjectForm = {
   sellerName: "",
@@ -112,23 +111,66 @@ export default function DeveloperDashboard() {
   const [projects, setProjects] = useState<StoredProject[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [wallet, setWallet] = useState<WalletState | null>(null);
+  const requestedGap = Math.max(0, form.requestedCredits - tgoMaxCredits);
   const [projectMap, setProjectMap] = useState<OnChainProjectMap>(() => loadProjectMap());
   const [onChainData, setOnChainData] = useState<Record<string, OnChainProject>>({});
   const [actionKey, setActionKey] = useState<string | null>(null);
   const [txMsg, setTxMsg] = useState("");
   const [cardMsg, setCardMsg] = useState<Record<string, string>>({});
   const [tab, setTab] = useState<"submit" | "projects">("submit");
-  const [mintPriceMap, setMintPriceMap] = useState<Record<string, string>>({});
   const [pageLoading, setPageLoading] = useState(true);
+  const [demoMode, setDemoMode] = useState(false);
+  const [tcutBalance, setTcutBalance] = useState<string | null>(null);
+
+  function getResolvedOnChainId(project: StoredProject): number | undefined {
+    return projectMap[project.id] ?? project.onChainId;
+  }
+
+  function getDisplayedProjects(): StoredProject[] {
+    if (demoMode) return projects;
+    const myAddr = wallet?.account?.toLowerCase();
+    if (!myAddr) return [];
+    const myIds = getMyProjectIds();
+    return projects.filter((project) =>
+      project.creatorAddress?.toLowerCase() === myAddr ||
+      myIds.has(project.id) ||
+      onChainData[project.id]?.seller?.toLowerCase() === myAddr
+    );
+  }
 
   async function loadProjects() {
     const res = await fetch(`${apiBase}/projects`);
-    if (res.ok) setProjects(await res.json());
+    if (!res.ok) return;
+    const nextProjects: StoredProject[] = await res.json();
+    setProjects(nextProjects);
+    setProjectMap((prev) => {
+      const merged = { ...prev };
+      let changed = false;
+      for (const project of nextProjects) {
+        if (project.onChainId != null && merged[project.id] !== project.onChainId) {
+          merged[project.id] = project.onChainId;
+          changed = true;
+        }
+      }
+      if (changed) {
+        saveProjectMap(merged);
+        return merged;
+      }
+      return prev;
+    });
   }
 
   async function refreshWallet() {
     const w = await getConnectedWallet();
     setWallet(w);
+    if (w) {
+      try {
+        const b = await readWalletBalances(w.provider, w.account);
+        setTcutBalance(b.tokenBalance);
+      } catch {
+        setTcutBalance(null);
+      }
+    }
   }
 
   async function refreshOnChain(localId: string, onChainId: number) {
@@ -142,6 +184,14 @@ export default function DeveloperDashboard() {
 
   useEffect(() => {
     Promise.all([loadProjects(), refreshWallet()]).finally(() => setPageLoading(false));
+    if (!window.ethereum?.on) return;
+    const handler = () => void refreshWallet();
+    window.ethereum.on("accountsChanged", handler);
+    window.ethereum.on("chainChanged", handler);
+    return () => {
+      window.ethereum?.removeListener?.("accountsChanged", handler);
+      window.ethereum?.removeListener?.("chainChanged", handler);
+    };
   }, []);
 
   useEffect(() => {
@@ -151,6 +201,28 @@ export default function DeveloperDashboard() {
     }
   }, [wallet, projectMap]);
 
+  function getMyProjectIds(): Set<string> {
+    const addr = wallet?.account?.toLowerCase() ?? "anon";
+    try { return new Set(JSON.parse(localStorage.getItem(`myProjectIds_${addr}`) ?? "[]")); }
+    catch { return new Set(); }
+  }
+
+  async function saveMyProjectId(id: string) {
+    let addr = wallet?.account?.toLowerCase();
+    if (!addr) {
+      try {
+        const accs: string[] = await (window as any).ethereum?.request({ method: "eth_accounts" });
+        addr = accs?.[0]?.toLowerCase();
+      } catch { /* ignore */ }
+    }
+    const key = `myProjectIds_${addr ?? "anon"}`;
+    try {
+      const ids: string[] = JSON.parse(localStorage.getItem(key) ?? "[]");
+      if (!ids.includes(id)) ids.push(id);
+      localStorage.setItem(key, JSON.stringify(ids));
+    } catch { /* ignore */ }
+  }
+
   async function assessProject(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -158,9 +230,14 @@ export default function DeveloperDashboard() {
       const res = await fetch(`${apiBase}/projects/assess`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          creatorAddress: wallet?.account?.toLowerCase(),
+        }),
       });
       if (!res.ok) throw new Error("Assessment failed");
+      const created = await res.json();
+      await saveMyProjectId(created.id);
       await loadProjects();
       setTab("projects");
       setTxMsg("Risk assessment complete! Review below then submit on-chain.");
@@ -207,26 +284,28 @@ export default function DeveloperDashboard() {
     const next = { ...projectMap, [project.id]: onChainId };
     setProjectMap(next);
     saveProjectMap(next);
+    await fetch(`${apiBase}/projects/${project.id}/on-chain`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ onChainId }),
+    });
     setTxMsg(`✅ Submitted on-chain as Project #${onChainId}`);
     await refreshOnChain(project.id, onChainId);
-  }
-
-  async function approveStake(project: StoredProject) {
-    if (!wallet) throw new Error("Connect wallet first");
-    const { utilityToken } = await getContracts(wallet.provider);
-    const tx = await utilityToken.approve(config.marketAddress, parseEther(String(project.assessment.requiredStake)));
-    await tx.wait();
-    const msg = `✅ Approve สำเร็จ! ตอนนี้กด "2b. Deposit Stake" ได้เลย`;
-    setTxMsg(msg);
-    setCardMsg(prev => ({ ...prev, [project.id]: msg }));
   }
 
   async function depositStake(project: StoredProject) {
     if (!wallet) throw new Error("Connect wallet first");
     const onChainId = projectMap[project.id];
     if (!onChainId) throw new Error("Submit on-chain first");
-    const { market } = await getContracts(wallet.provider);
-    const tx = await market.depositProjectStake(onChainId, parseEther(String(project.assessment.requiredStake)));
+    const stakeWei = parseEther(String(project.assessment.requiredStake));
+    const { market, utilityToken } = await getContracts(wallet.provider);
+    const marketAddr = await market.getAddress();
+    const allowance = await utilityToken.allowance(wallet.account, marketAddr);
+    if (allowance < stakeWei) {
+      const appTx = await utilityToken.approve(marketAddr, stakeWei);
+      await appTx.wait();
+    }
+    const tx = await market.depositProjectStake(onChainId, stakeWei);
     await tx.wait();
     const msg = `✅ Stake สำเร็จ! Project #${onChainId} พร้อม Mint แล้ว`;
     setTxMsg(msg);
@@ -251,13 +330,70 @@ export default function DeveloperDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <WalletBar role="developer" />
+      <WalletBar role="developer" hideBalance />
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Page Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">🌱 Developer Dashboard</h1>
-          <p className="text-gray-500 text-sm mt-1">ส่งโครงการลดคาร์บอน วาง Stake และติดตามสถานะ</p>
+        <div className="mb-2 flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+              🌱 Developer Dashboard
+              {tcutBalance && (
+                <span className="text-sm font-normal text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                  {tcutBalance}
+                </span>
+              )}
+            </h1>
+            <p className="text-gray-500 text-sm mt-1">ส่งโครงการลดคาร์บอน วาง Stake และติดตามสถานะ</p>
+          </div>
+          <button
+            onClick={() => setDemoMode(m => !m)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+              demoMode
+                ? "bg-yellow-100 border-yellow-300 text-yellow-800 hover:bg-yellow-200"
+                : "bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            <span className={`w-7 h-4 rounded-full relative transition-colors ${demoMode ? "bg-yellow-400" : "bg-gray-300"}`}>
+              <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-all ${demoMode ? "left-3.5" : "left-0.5"}`} />
+            </span>
+            {demoMode ? "🧪 Demo" : "👤 My Projects"}
+          </button>
+        </div>
+
+        {/* Tab bar */}
+        <div className="flex border-b border-gray-200 mb-6">
+          <button
+            onClick={() => setTab("submit")}
+            className={`px-5 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px ${
+              tab === "submit"
+                ? "border-emerald-600 text-emerald-700"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            📋 Submit Project
+          </button>
+          <button
+            onClick={() => setTab("projects")}
+            className={`px-5 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px ${
+              tab === "projects"
+                ? "border-emerald-600 text-emerald-700"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            📁 Project List{(() => {
+              const myAddr = wallet?.account?.toLowerCase();
+              const myIds = getMyProjectIds();
+              const count = demoMode
+                ? projects.length
+                : projects.filter((p) =>
+                    p.creatorAddress?.toLowerCase() === myAddr ||
+                    myIds.has(p.id) ||
+                    (myAddr && onChainData[p.id]?.seller?.toLowerCase() === myAddr)
+                  ).length;
+              return count > 0 ? ` (${count})` : "";
+            })()}
+          </button>
         </div>
 
         {pageLoading && (
@@ -270,151 +406,214 @@ export default function DeveloperDashboard() {
           <div className={`mb-4 p-3 rounded-lg text-sm border ${txMsg.startsWith("✅") || txMsg.startsWith("🌱") ? "bg-emerald-50 border-emerald-200 text-emerald-800" : txMsg.startsWith("❌") ? "bg-red-50 border-red-200 text-red-700" : "bg-blue-50 border-blue-200 text-blue-700"}`}>{txMsg}</div>
         )}
 
-        {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-gray-200 rounded-lg p-1 w-fit">
-          <button
-            onClick={() => setTab("submit")}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tab === "submit" ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
-          >
-            📋 Submit Project
-          </button>
-          <button
-            onClick={() => setTab("projects")}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${tab === "projects" ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700"}`}
-          >
-            📁 My Projects {projects.length > 0 && <span className="ml-1 bg-emerald-100 text-emerald-700 text-xs px-1.5 py-0.5 rounded-full">{projects.length}</span>}
-          </button>
-        </div>
-
         {/* Submit Tab */}
-        {!pageLoading && tab === "submit" && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">ข้อมูลโครงการ</h2>
-              <form onSubmit={assessProject} className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="block">
-                    <span className="text-xs font-medium text-gray-600">ชื่อผู้พัฒนา</span>
-                    <input className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                      value={form.sellerName} onChange={(e) => setForm({ ...form, sellerName: e.target.value })} required />
-                  </label>
-                  <label className="block">
-                    <span className="text-xs font-medium text-gray-600">ชื่อโครงการ</span>
-                    <input className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                      value={form.projectName} onChange={(e) => setForm({ ...form, projectName: e.target.value })} required />
-                  </label>
+        {tab === "submit" && (
+          <div className="grid gap-6 md:grid-cols-[1fr_300px]">
+            {/* Left: Form */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+              <h2 className="text-base font-semibold text-gray-800 mb-5">ข้อมูลโครงการ</h2>
+              <form onSubmit={assessProject} className="space-y-5">
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อผู้พัฒนา</label>
+                    <input
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      placeholder="เช่น สมชาย รักษ์โลก"
+                      value={form.sellerName}
+                      onChange={(e) => setForm({ ...form, sellerName: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อโครงการ</label>
+                    <input
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      placeholder="เช่น ป่าชุมชนดอยสุเทพ"
+                      value={form.projectName}
+                      onChange={(e) => setForm({ ...form, projectName: e.target.value })}
+                      required
+                    />
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="block">
-                    <span className="text-xs font-medium text-gray-600">จังหวัด</span>
-                    <select className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                      value={form.province} onChange={(e) => setForm({ ...form, province: e.target.value })}>
-                      {provinces.map(p => <option key={p} value={p}>{p}</option>)}
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">จังหวัด</label>
+                    <select
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      value={form.province}
+                      onChange={(e) => setForm({ ...form, province: e.target.value })}
+                    >
+                      {provinces.map((p) => <option key={p} value={p}>{p}</option>)}
                     </select>
-                  </label>
-                  <label className="block">
-                    <span className="text-xs font-medium text-gray-600">ประเภทโครงการ</span>
-                    <select className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                      value={form.projectType} onChange={(e) => setForm({ ...form, projectType: e.target.value as ProjectType })}>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">ประเภทโครงการ</label>
+                    <select
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      value={form.projectType}
+                      onChange={(e) => setForm({ ...form, projectType: e.target.value as ProjectType })}
+                    >
                       <option value="forest">🌳 Forest</option>
                       <option value="mangrove">🌿 Mangrove</option>
                       <option value="solar">☀️ Solar</option>
                       <option value="biogas">⚡ Biogas</option>
                     </select>
-                  </label>
+                  </div>
                 </div>
-                {/* Optional custom coordinates */}
-                <details className="group">
-                  <summary className="cursor-pointer text-xs text-blue-600 hover:text-blue-800 font-medium select-none list-none flex items-center gap-1">
-                    <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
-                    ระบุพิกัด GPS พื้นที่โครงการจริง (optional — ถ้าไม่กรอก ใช้พิกัดตัวเมืองจังหวัด)
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">พื้นที่ (ไร่)</label>
+                    <input
+                      type="number" min={1}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      value={form.landAreaRai}
+                      onChange={(e) => setForm({ ...form, landAreaRai: Number(e.target.value) })}
+                    />
+                    <p className="mt-1 text-xs text-gray-400">ใช้คำนวณเพดานเครดิตตามอัตราอ้างอิงของประเภทโครงการ</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Credits ที่ขอ</label>
+                    <input
+                      type="number" min={1}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      value={form.requestedCredits}
+                      onChange={(e) => setForm({ ...form, requestedCredits: Number(e.target.value) })}
+                    />
+                    <p className="mt-1 text-xs text-gray-400">จำนวนเครดิตที่ต้องการขอรับก่อนระบบปรับลดตามความเสี่ยงและขนาดพื้นที่</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">ปี Vintage</label>
+                    <input
+                      type="number" min={2020}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      value={form.vintageYear}
+                      onChange={(e) => setForm({ ...form, vintageYear: Number(e.target.value) })}
+                    />
+                    <p className="mt-1 text-xs text-gray-400">ปีที่คาร์บอนเครดิตชุดนี้อ้างอิงการลดหรือกักเก็บคาร์บอน</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">การลดคาร์บอน (ตัน CO₂) ที่รายงานเอง</label>
+                  <input
+                    type="number" min={1}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    value={form.selfReportedReduction}
+                    onChange={(e) => setForm({ ...form, selfReportedReduction: Number(e.target.value) })}
+                  />
+                  <p className="mt-1 text-xs text-gray-400">ระบบจะนำไปเทียบกับ climate signals และใช้คำนวณ approved credits เบื้องต้น</p>
+                </div>
+
+                <details className="rounded-lg border border-dashed border-gray-200 px-4 py-3">
+                  <summary className="cursor-pointer text-sm text-gray-500 list-none flex items-center justify-between">
+                    <span>พิกัด GPS <span className="text-xs text-gray-400">(Optional)</span></span>
+                    <span className="text-gray-400">›</span>
                   </summary>
-                  <div className="mt-2 grid grid-cols-2 gap-3">
-                    <label className="block">
-                      <span className="text-xs font-medium text-gray-600">Latitude</span>
-                      <input type="number" step="0.0001" placeholder="เช่น 18.7904"
-                        className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                        value={form.lat ?? ""} onChange={(e) => setForm({ ...form, lat: e.target.value ? Number(e.target.value) : undefined })} />
-                    </label>
-                    <label className="block">
-                      <span className="text-xs font-medium text-gray-600">Longitude</span>
-                      <input type="number" step="0.0001" placeholder="เช่น 98.9853"
-                        className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                        value={form.lon ?? ""} onChange={(e) => setForm({ ...form, lon: e.target.value ? Number(e.target.value) : undefined })} />
-                    </label>
+                  <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
+                      <input
+                        type="number" step="0.0001" placeholder="เช่น 18.7883"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        value={form.lat ?? ""}
+                        onChange={(e) => setForm({ ...form, lat: e.target.value ? Number(e.target.value) : undefined })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
+                      <input
+                        type="number" step="0.0001" placeholder="เช่น 98.9853"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        value={form.lon ?? ""}
+                        onChange={(e) => setForm({ ...form, lon: e.target.value ? Number(e.target.value) : undefined })}
+                      />
+                    </div>
                   </div>
                 </details>
-                <div className="grid grid-cols-3 gap-3">
-                  <label className="block">
-                    <span className="text-xs font-medium text-gray-600">พื้นที่ (ไร่)</span>
-                    <input type="number" className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                      value={form.landAreaRai} onChange={(e) => setForm({ ...form, landAreaRai: Number(e.target.value) })} min={1} />
-                  </label>
-                  <label className="block">
-                    <span className="text-xs font-medium text-gray-600">Credits ที่ขอ</span>
-                    <input type="number" className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                      value={form.requestedCredits} onChange={(e) => setForm({ ...form, requestedCredits: Number(e.target.value) })} min={1} />
-                  </label>
-                  <label className="block">
-                    <span className="text-xs font-medium text-gray-600">ปี Vintage</span>
-                    <input type="number" className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                      value={form.vintageYear} onChange={(e) => setForm({ ...form, vintageYear: Number(e.target.value) })} min={2020} />
-                  </label>
-                </div>
-                <label className="block">
-                  <span className="text-xs font-medium text-gray-600">การลดคาร์บอน (ตัน CO₂) ที่รายงานเอง</span>
-                  <input type="number" className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                    value={form.selfReportedReduction} onChange={(e) => setForm({ ...form, selfReportedReduction: Number(e.target.value) })} min={1} />
-                </label>
+
                 {tgoExceeded && (
-                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                    ⚠️ Credits ที่ขอ ({form.requestedCredits}) เกินขีดจำกัด TGO: พื้นที่ {form.landAreaRai} ไร่ absorb ได้สูงสุด <strong>{tgoMaxCredits} tCO₂/ปี</strong> ({TGO_MAX_RATE[form.projectType]} tCO₂/ไร่/ปี) — ระบบจะปรับลดอัตโนมัติ
-                  </p>
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                    <span className="font-medium">เกินเพดานอ้างอิง {requestedGap} tCO2</span>
+                    {" "}— เพดานสำหรับโครงการนี้คือ <strong>{tgoMaxCredits} tCO2/ปี</strong> ({TGO_MAX_RATE[form.projectType]} tCO2/ไร่/ปี)
+                  </div>
                 )}
-                <button type="submit" disabled={submitting}
-                  className="w-full bg-emerald-600 text-white py-2.5 rounded-lg font-semibold text-sm hover:bg-emerald-700 disabled:opacity-50 transition-colors">
-                  {submitting ? "Assessing..." : "🔍 Assess Risk & Submit"}
-                </button>
+
+                <div className="flex items-center justify-end pt-2">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                  >
+                    {submitting ? "กำลังประเมิน..." : "Assess Risk →"}
+                  </button>
+                </div>
+
               </form>
             </div>
 
-            {/* Info panel */}
+            {/* Right: Info panels */}
             <div className="space-y-4">
-              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
-                <h3 className="font-semibold text-emerald-800 mb-2">📊 ขั้นตอนการส่งโครงการ</h3>
-                <ol className="space-y-2 text-sm text-emerald-700">
-                  {["กรอกข้อมูลโครงการ → ระบบคำนวณ Risk Score", "ดู Assessment Result + Required Stake", "Submit on-chain (MetaMask)", "Approve + Deposit Stake", "รอ Verifier ตรวจสอบและอนุมัติ", "Token ถูก Mint → ขึ้น Marketplace อัตโนมัติ"].map((s, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className="w-5 h-5 rounded-full bg-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
-                      {s}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">ขั้นตอนการส่งโครงการ</h3>
+                <ol className="space-y-3">
+                  {[
+                    { n: "1", label: "กรอกข้อมูลโครงการ", desc: "ชื่อ พื้นที่ ประเภท credits ที่ขอ" },
+                    { n: "2", label: "Assess Risk", desc: "ระบบดึง satellite + NASA + OWM ประเมิน risk score" },
+                    { n: "3", label: "Submit On-Chain", desc: "บันทึกข้อมูลลง smart contract บน Sepolia" },
+                    { n: "4", label: "รอ Verifier", desc: "Verifier ตรวจสอบและ approve credits" },
+                    { n: "5", label: "Deposit Stake", desc: "วาง TCUT เพื่อค้ำประกันความน่าเชื่อถือ" },
+                    { n: "6", label: "Mint & List", desc: "สร้าง Carbon Credits ขึ้น Marketplace" },
+                  ].map((s) => (
+                    <li key={s.n} className="flex gap-3 items-start">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center justify-center">{s.n}</span>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-700">{s.label}</p>
+                        <p className="text-xs text-gray-400">{s.desc}</p>
+                      </div>
                     </li>
                   ))}
                 </ol>
               </div>
+
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
-                <h3 className="font-semibold text-amber-800 mb-2">⚠️ กลไก Staking</h3>
-                <p className="text-sm text-amber-700 leading-relaxed">
-                  ยิ่ง Risk Score สูง → ต้อง Stake มากขึ้น<br />
-                  ถ้าข้อมูลจริง → ได้ Stake คืน + Reward<br />
-                  ถ้าข้อมูลปลอม → โดน <strong>Slash</strong> (ยึด Stake ทั้งหมด)
+                <h3 className="text-sm font-semibold text-amber-800 mb-2">⚠️ กลไก Staking</h3>
+                <p className="text-xs text-amber-700 leading-5">
+                  การวาง Stake ด้วย TCUT เป็นกลไกค้ำประกัน — หาก Verifier หรือ Challenger พิสูจน์ได้ว่าข้อมูลไม่ถูกต้อง Stake อาจถูก Slash (ยึด) บางส่วนหรือทั้งหมด
+                </p>
+                <p className="text-xs text-amber-600 leading-5 mt-2">
+                  Stake ที่ต้องการขึ้นอยู่กับ Risk Score — ยิ่ง risk สูง ยิ่งต้อง stake มากขึ้น
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Projects Tab */}
+        {/* My Projects Tab */}
         {!pageLoading && tab === "projects" && (
           <div className="space-y-4">
-            {projects.length === 0 && (
-              <div className="text-center py-16 text-gray-400">
-                <p className="text-4xl mb-3">📋</p>
-                <p className="text-lg font-medium">ยังไม่มีโครงการ</p>
-                <p className="text-sm">กลับไปที่ Submit Project เพื่อเริ่มต้น</p>
+            {demoMode ? (
+              <div className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 text-xs text-yellow-700">
+                🧪 <span><strong>Demo mode</strong> — แสดงทุกโปรเจคที่ถูกสร้างไว้ในระบบ ไม่ใช่เฉพาะของคุณ</span>
               </div>
-            )}
-            {projects.map((project) => {
-              const onChainId = projectMap[project.id];
+            ) : !wallet ? (
+              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
+                🔌 Connect wallet เพื่อดูโปรเจคของคุณ
+              </div>
+            ) : null}
+            {(() => {
+              const displayed = getDisplayedProjects();
+              if (displayed.length === 0) return (
+                <div className="text-center py-16 text-gray-400">
+                  <p className="text-4xl mb-3">📋</p>
+                  <p className="text-lg font-medium">{demoMode ? "ยังไม่มีโครงการ" : "ไม่พบโปรเจคของคุณ"}</p>
+                  <p className="text-sm">{demoMode ? "ไปที่แท็บ \"Submit Project\" เพื่อเริ่มต้น" : "ลอง Submit โปรเจคแรกของคุณ หรือเปิด Demo mode เพื่อดูทั้งหมด"}</p>
+                </div>
+              );
+              return displayed.map((project) => {
+              const onChainId = getResolvedOnChainId(project);
               const onChain = onChainData[project.id];
               return (
                 <div key={project.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
@@ -597,16 +796,40 @@ export default function DeveloperDashboard() {
                     </div>
                   )}
 
-                  {/* Evidence Upload */}
-                  <div className="border border-gray-100 rounded-xl p-4 mb-2">
-                    <EvidenceUpload
-                      projectId={project.id}
-                      projectName={project.input.projectName}
-                    />
-                  </div>
+                  {/* Evidence Upload — ซ่อนระหว่างรอ Verifier */}
+                  {!(onChainId && onChain?.status === 0) && (
+                    <div className="border border-gray-100 rounded-xl p-4 mb-2">
+                      <EvidenceUpload
+                        projectId={project.id}
+                        projectName={project.input.projectName}
+                      />
+                    </div>
+                  )}
 
                   {/* Status-aware actions */}
                   <div className="border-t border-gray-100 pt-4">
+                    {/* Stale — localStorage has entry but contract shows zero seller (old contract) */}
+                    {onChainId && onChain?.seller === "0x0000000000000000000000000000000000000000" && (
+                      <div className="space-y-2 mb-3">
+                        <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">
+                          ⚠️ ข้อมูล on-chain เก่าค้างอยู่ (contract ถูก redeploy) — กด Re-submit เพื่อ submit ใหม่กับ contract ปัจจุบัน
+                        </div>
+                        <button
+                          disabled={!!actionKey || !wallet}
+                          onClick={() => {
+                            const next = { ...projectMap };
+                            delete next[project.id];
+                            setProjectMap(next);
+                            saveProjectMap(next);
+                            setOnChainData(prev => { const n = { ...prev }; delete n[project.id]; return n; });
+                            void runAction(`${project.id}:submit`, () => submitOnChain(project), project.id);
+                          }}
+                          className="w-full text-sm bg-red-600 text-white py-2.5 rounded-lg hover:bg-red-700 disabled:opacity-40 font-semibold transition-colors"
+                        >
+                          {actionKey === `${project.id}:submit` ? "⏳ Re-submitting..." : "🔄 Re-submit On-Chain"}
+                        </button>
+                      </div>
+                    )}
                     {/* Step 1 — not submitted yet */}
                     {!onChainId && (
                       <div className="space-y-2">
@@ -637,7 +860,7 @@ export default function DeveloperDashboard() {
                     )}
 
                     {/* Step 2 — submitted, awaiting verifier */}
-                    {onChainId && onChain && onChain.status === 0 && (
+                    {onChainId && onChain && onChain.status === 0 && onChain.seller !== "0x0000000000000000000000000000000000000000" && (
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
                           <span className="text-lg">⏳</span>
@@ -645,10 +868,6 @@ export default function DeveloperDashboard() {
                             <p className="text-sm font-semibold text-amber-700">Waiting for Verifier</p>
                             <p className="text-xs text-amber-600">On-chain #{onChainId} — รอ Verifier ตรวจสอบและ Approve</p>
                           </div>
-                        </div>
-                        <div className="flex gap-2 opacity-40 pointer-events-none">
-                          <button disabled className="flex-1 text-xs bg-blue-600 text-white py-2 rounded-lg">Approve Stake (รอ Verifier ก่อน)</button>
-                          <button disabled className="flex-1 text-xs bg-emerald-600 text-white py-2 rounded-lg">Deposit Stake</button>
                         </div>
                       </div>
                     )}
@@ -665,22 +884,13 @@ export default function DeveloperDashboard() {
                             </p>
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <button
-                            disabled={!!actionKey || !wallet}
-                            onClick={() => void runAction(`${project.id}:approveStake`, () => approveStake(project), project.id)}
-                            className="flex-1 text-xs bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 disabled:opacity-40 font-semibold transition-colors"
-                          >
-                            {actionKey === `${project.id}:approveStake` ? "⏳ Approving..." : "2a. Approve Token"}
-                          </button>
-                          <button
-                            disabled={!!actionKey || !wallet}
-                            onClick={() => void runAction(`${project.id}:stake`, () => depositStake(project), project.id)}
-                            className="flex-1 text-xs bg-emerald-600 text-white py-2.5 rounded-lg hover:bg-emerald-700 disabled:opacity-40 font-semibold transition-colors"
-                          >
-                            {actionKey === `${project.id}:stake` ? "⏳ Staking..." : "2b. Deposit Stake →"}
-                          </button>
-                        </div>
+                        <button
+                          disabled={!!actionKey || !wallet}
+                          onClick={() => void runAction(`${project.id}:stake`, () => depositStake(project), project.id)}
+                          className="w-full text-sm bg-emerald-600 text-white py-2.5 rounded-lg hover:bg-emerald-700 disabled:opacity-40 font-semibold transition-colors"
+                        >
+                          {actionKey === `${project.id}:stake` ? "⏳ กำลัง Stake..." : "🔒 Deposit Stake →"}
+                        </button>
                         {cardMsg[project.id] && (
                           <p className={`text-xs mt-1 px-1 ${cardMsg[project.id].startsWith("✅") ? "text-emerald-700" : cardMsg[project.id].startsWith("❌") ? "text-red-600" : "text-blue-600"}`}>
                             {cardMsg[project.id]}
@@ -697,28 +907,17 @@ export default function DeveloperDashboard() {
                           <div>
                             <p className="text-sm font-semibold text-blue-700">Stake Complete — Ready to Mint!</p>
                             <p className="text-xs text-blue-600">
-                              {onChain.approvedCredits} credits พร้อม Mint — ตั้งราคาและ Mint ขึ้น Marketplace
+                              {onChain.approvedCredits} credits พร้อม Mint — ราคา 100 TCUT ต่อ Credit
                             </p>
                           </div>
                         </div>
-                        <div className="flex gap-2 items-center">
-                          <div className="flex-1">
-                            <label className="text-xs text-gray-500 block mb-1">ราคาต่อ 1 Credit (TCUT)</label>
-                            <input
-                              type="number"
-                              min="1"
-                              placeholder="100"
-                              value={mintPriceMap[project.id] ?? "100"}
-                              onChange={e => setMintPriceMap(p => ({ ...p, [project.id]: e.target.value }))}
-                              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                            />
-                          </div>
+                        <div className="flex justify-end">
                           <button
                             disabled={!!actionKey || !wallet}
-                            onClick={() => void runAction(`${project.id}:mint`, () => mintAndList(project, mintPriceMap[project.id] ?? "100"))}
-                            className="flex-shrink-0 bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 disabled:opacity-40 transition-colors mt-4"
+                            onClick={() => void runAction(`${project.id}:mint`, () => mintAndList(project, "100"))}
+                            className="bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 disabled:opacity-40 transition-colors"
                           >
-                            {actionKey === `${project.id}:mint` ? "Minting..." : "🌱 Mint & List"}
+                            {actionKey === `${project.id}:mint` ? "Minting..." : "🌱 Mint"}
                           </button>
                         </div>
                       </div>
@@ -762,7 +961,8 @@ export default function DeveloperDashboard() {
                   <p className="text-xs text-gray-300 mt-2 font-mono">Hash: {project.assessment.sourceHash.slice(0, 32)}...</p>
                 </div>
               );
-            })}
+            });
+            })()}
           </div>
         )}
       </div>

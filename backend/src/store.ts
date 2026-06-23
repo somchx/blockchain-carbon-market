@@ -10,11 +10,14 @@ function toStoredProject(row: {
   selfReportedReduction: number; vintageYear: number;
   approvedCredits: number; approvedReduction: number; requiredStake: number;
   riskScore: number; trustScore: number; recommendation: string;
-  sourceHash: string; signals: unknown;
+  sourceHash: string; signals: unknown; onChainId?: number | null;
+  creatorAddress?: string | null;
 }): StoredProject {
   return {
     id: row.id,
     createdAt: row.createdAt.toISOString(),
+    ...(row.onChainId != null ? { onChainId: row.onChainId } : {}),
+    ...(row.creatorAddress ? { creatorAddress: row.creatorAddress } : {}),
     input: {
       sellerName: row.sellerName,
       projectName: row.projectName,
@@ -56,7 +59,7 @@ function toEvidenceFile(row: {
 
 // ── Projects ──────────────────────────────────────────────────────────────────
 
-export async function saveProject(project: StoredProject): Promise<StoredProject> {
+export async function saveProject(project: StoredProject, creatorAddress?: string): Promise<StoredProject> {
   const row = await prisma.carbonProject.upsert({
     where: { id: project.id },
     create: {
@@ -78,6 +81,7 @@ export async function saveProject(project: StoredProject): Promise<StoredProject
       recommendation: project.assessment.recommendation,
       sourceHash: project.assessment.sourceHash,
       signals: project.assessment.signals as object,
+      ...(creatorAddress ? { creatorAddress: creatorAddress.toLowerCase() } : {}),
     },
     update: {},
   });
@@ -94,6 +98,10 @@ export async function listProjects(): Promise<StoredProject[]> {
 export async function getProject(id: string): Promise<StoredProject | null> {
   const row = await prisma.carbonProject.findUnique({ where: { id } });
   return row ? toStoredProject(row) : null;
+}
+
+export async function updateOnChainId(id: string, onChainId: number): Promise<void> {
+  await prisma.carbonProject.update({ where: { id }, data: { onChainId } });
 }
 
 // ── Evidence ──────────────────────────────────────────────────────────────────

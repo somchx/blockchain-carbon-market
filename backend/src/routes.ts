@@ -5,7 +5,7 @@ import { generateCertificate } from "./certificateService.js";
 import { prisma } from "./db.js";
 import { uploadFileToIPFS } from "./ipfsService.js";
 import { assessProject } from "./riskEngine.js";
-import { getLeaderboard, getProject, listEvidence, listProjects, saveEvidence, saveProject } from "./store.js";
+import { getLeaderboard, getProject, listEvidence, listProjects, saveEvidence, saveProject, updateOnChainId } from "./store.js";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -25,6 +25,10 @@ const projectSchema = z.object({
   requestedCredits: z.number().positive(),
   selfReportedReduction: z.number().positive(),
   vintageYear: z.number().int().min(2020).max(2100)
+});
+
+const walletSchema = z.object({
+  walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid wallet address"),
 });
 
 export const api = Router();
@@ -47,6 +51,81 @@ api.get("/projects/:id", async (req, res) => {
 
 api.get("/leaderboard", async (_req, res) => {
   res.json(await getLeaderboard());
+});
+
+api.get("/verifier-access/:walletAddress", async (req, res) => {
+  const parsed = walletSchema.safeParse({ walletAddress: req.params.walletAddress });
+  if (!parsed.success) {
+    return res.status(400).json({ message: "Invalid wallet address" });
+  }
+
+  const walletAddress = parsed.data.walletAddress.toLowerCase();
+  const access = await prisma.verifierAccess.findUnique({
+    where: { walletAddress },
+  });
+
+  if (!access) {
+    return res.json({ walletAddress, status: "none", hasAccess: false });
+  }
+
+  res.json({
+    walletAddress: access.walletAddress,
+    status: access.status,
+    hasAccess: access.status === "approved",
+    requestedAt: access.requestedAt.toISOString(),
+    approvedAt: access.approvedAt?.toISOString(),
+    approvalMode: access.approvalMode,
+  });
+});
+
+api.post("/verifier-access/request", async (req, res) => {
+  const parsed = walletSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: "Invalid wallet address",
+      issues: parsed.error.flatten(),
+    });
+  }
+
+  const walletAddress = parsed.data.walletAddress.toLowerCase();
+  const now = new Date();
+  const access = await prisma.verifierAccess.upsert({
+    where: { walletAddress },
+    create: {
+      walletAddress,
+      status: "approved",
+      requestedAt: now,
+      approvedAt: now,
+      approvalMode: "demo_auto",
+    },
+    update: {
+      status: "approved",
+      approvedAt: now,
+      approvalMode: "demo_auto",
+    },
+  });
+
+  res.status(201).json({
+    walletAddress: access.walletAddress,
+    status: access.status,
+    hasAccess: true,
+    requestedAt: access.requestedAt.toISOString(),
+    approvedAt: access.approvedAt?.toISOString(),
+    approvalMode: access.approvalMode,
+    message: "Auto-approved for demo",
+  });
+});
+
+api.patch("/projects/:id/on-chain", async (req, res) => {
+  const { id } = req.params as { id: string };
+  const { onChainId } = req.body as { onChainId: number };
+  if (!Number.isInteger(onChainId) || onChainId < 1) {
+    return res.status(400).json({ message: "Invalid onChainId" });
+  }
+  const project = await getProject(id);
+  if (!project) return res.status(404).json({ message: "Project not found" });
+  await updateOnChainId(id, onChainId);
+  res.json({ ok: true, onChainId });
 });
 
 api.get("/projects/:id/evidence", async (req, res) => {
@@ -132,6 +211,7 @@ api.get("/admin/stats", async (_req, res) => {
 });
 
 api.post("/projects/assess", async (req, res) => {
+  console.log("[assess] body keys:", Object.keys(req.body), "creatorAddress:", req.body.creatorAddress);
   const parsed = projectSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
@@ -143,12 +223,13 @@ api.post("/projects/assess", async (req, res) => {
   try {
     const assessment = await assessProject(parsed.data);
     const id = `P-${Date.now()}`;
+    const creatorAddress = typeof req.body.creatorAddress === "string" ? req.body.creatorAddress : undefined;
     const storedProject = await saveProject({
       id,
       createdAt: new Date().toISOString(),
       input: parsed.data,
       assessment
-    });
+    }, creatorAddress);
     res.status(201).json(storedProject);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Assessment failed";

@@ -31,10 +31,22 @@ model CarbonProject {
   recommendation    String
   sourceHash        String
   signals           Json   // DataSignals as JSON blob
+  onChainId         Int?   @map("on_chain_id")
+  creatorAddress    String? @map("creator_address")
 
   evidence EvidenceFile[]
 
   @@map("carbon_projects")
+}
+
+model VerifierAccess {
+  walletAddress String    @id @map("wallet_address")
+  status        String
+  requestedAt   DateTime  @default(now()) @map("requested_at")
+  approvedAt    DateTime? @map("approved_at")
+  approvalMode  String?   @map("approval_mode")
+
+  @@map("verifier_access")
 }
 
 model EvidenceFile {

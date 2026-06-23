@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "npm run dev -w backend & npm run dev -w frontend",
     "build": "npm run build -w contracts && npm run build -w backend && npm run build -w frontend",
+    "reset:db": "npm run db:reset -w backend",
     "lint": "npm run lint -w backend && npm run lint -w frontend && npm run lint -w contracts",
     "test": "npm run test -w contracts && npm run test -w backend"
   }

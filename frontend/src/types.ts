@@ -28,6 +28,8 @@ export type Assessment = {
 export type StoredProject = {
   id: string;
   createdAt: string;
+  onChainId?: number;
+  creatorAddress?: string;
   input: ProjectForm;
   assessment: Assessment;
 };

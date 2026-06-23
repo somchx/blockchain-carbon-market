@@ -1,5 +1,5 @@
-import { Contract, formatUnits, JsonRpcProvider, MaxUint256, parseEther } from "ethers";
-import { carbonCreditAbi, erc20Abi } from "../../lib/contracts";
+import { Contract, formatUnits, MaxUint256, parseEther } from "ethers";
+import { erc20Abi } from "../../lib/contracts";
 import { useEffect, useState } from "react";
 import WalletBar from "../../components/WalletBar";
 import { getConnectedWallet, getContractConfig, getContracts, readWalletBalances, type WalletState } from "../../lib/web3";
@@ -47,11 +47,13 @@ export default function BuyerMarketplace() {
   const [portfolio, setPortfolio] = useState<Record<number, number>>({});
   const [tab, setTab] = useState<"market" | "portfolio">("market");
   const [retireAmount, setRetireAmount] = useState<Record<string, number>>({});
-  const [certLinks, setCertLinks] = useState<Record<string, string>>({});
+  const [certLinks, setCertLinks] = useState<Record<string, { url: string; amount: number }>>({});
   const [pageLoading, setPageLoading] = useState(true);
   const [cardMsg, setCardMsg] = useState<Record<string, string>>({});
   const [portfolioError, setPortfolioError] = useState("");
   const [portfolioDebug, setPortfolioDebug] = useState("");
+  const [tcutEnabled, setTcutEnabled] = useState(false);
+  const [enabling, setEnabling] = useState(false);
 
   async function loadData() {
     const w = await getConnectedWallet();
@@ -97,6 +99,40 @@ export default function BuyerMarketplace() {
     }
   }
 
+  async function checkTCUTApproval(w: WalletState) {
+    try {
+      const { market } = await getContracts(w.provider);
+      const tokenAddr: string = await market.utilityToken();
+      const signer = await w.provider.getSigner();
+      const token = new Contract(tokenAddr, erc20Abi, signer);
+      const marketAddr: string = await market.getAddress();
+      const allowance: bigint = await token.allowance(w.account, marketAddr);
+      setTcutEnabled(allowance > parseEther("999999"));
+    } catch {
+      setTcutEnabled(false);
+    }
+  }
+
+  async function enableTCUT() {
+    if (!wallet) return;
+    setEnabling(true);
+    try {
+      const { market } = await getContracts(wallet.provider);
+      const tokenAddr: string = await market.utilityToken();
+      const signer = await wallet.provider.getSigner();
+      const token = new Contract(tokenAddr, erc20Abi, signer);
+      const marketAddr: string = await market.getAddress();
+      const tx = await token.approve(marketAddr, MaxUint256);
+      await tx.wait();
+      setTcutEnabled(true);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed";
+      if (!msg.includes("rejected") && !msg.includes("denied")) setTxMsg(`❌ ${msg.slice(0, 160)}`);
+    } finally {
+      setEnabling(false);
+    }
+  }
+
   async function loadPortfolio(w: WalletState) {
     const entries: Record<number, number> = {};
     setPortfolioError("");
@@ -127,7 +163,7 @@ export default function BuyerMarketplace() {
     const w = await getConnectedWallet();
     setWallet(w);
     if (w) {
-      await Promise.all([loadBalance(w), loadPortfolio(w)]);
+      await Promise.all([loadBalance(w), loadPortfolio(w), checkTCUTApproval(w)]);
     }
     await loadData();
   }
@@ -159,33 +195,12 @@ export default function BuyerMarketplace() {
     }
   }
 
-  async function approveAndBuy(item: ListedProject, amount: number, itemId: string) {
+  async function buyCreditsAction(item: ListedProject, amount: number, itemId: string) {
     if (!wallet) throw new Error("Connect wallet first");
-    const signer = await wallet.provider.getSigner();
     const { market } = await getContracts(wallet.provider);
-
-    // Read actual token address from the contract (not env var) to ensure correctness
-    const tokenAddr: string = await market.utilityToken();
-    const token = new Contract(tokenAddr, erc20Abi, signer);
-    const marketAddr: string = await market.getAddress();
-
-    // Compute cost from already-displayed price (avoids bigint field access issues)
-    const priceFormatted = item.onChain.pricePerCreditFormatted; // e.g. "100.0"
+    const priceFormatted = item.onChain.pricePerCreditFormatted;
     const totalCost = parseEther(String(Number(priceFormatted) * amount));
-
-    // Check current allowance
-    const allowance: bigint = await token.allowance(wallet.account, marketAddr);
-
-    if (allowance < totalCost) {
-      setCardMsg(prev => ({ ...prev, [itemId]: "⏳ Step 1/2: MetaMask — Approve TCUT..." }));
-      // Approve MaxUint256 so user never needs to re-approve for future buys
-      const approveTx = await token.approve(marketAddr, MaxUint256);
-      await approveTx.wait();
-      setCardMsg(prev => ({ ...prev, [itemId]: "✅ Approved — ⏳ Step 2/2: MetaMask — ยืนยัน Buy..." }));
-    } else {
-      setCardMsg(prev => ({ ...prev, [itemId]: "⏳ MetaMask popup — กรุณา Confirm ใน MetaMask" }));
-    }
-
+    setCardMsg(prev => ({ ...prev, [itemId]: "⏳ กรุณา Confirm ใน MetaMask..." }));
     const buyTx = await market.buyCredits(item.onChain.id, amount);
     await buyTx.wait();
     const msg = `✅ ซื้อ ${amount} Credits จาก "${item.local.input.projectName}" สำเร็จ! (${formatUnits(totalCost, 18)} TCUT)`;
@@ -221,8 +236,8 @@ export default function BuyerMarketplace() {
     const { market } = await getContracts(wallet.provider);
     const tx = await market.retireCredits(onChainId, amount, cert.tokenUri);
     await tx.wait();
-    setCertLinks(prev => ({ ...prev, [onChainId]: cert.url }));
-    setTxMsg(`✅ Retired ${amount} credits! NFT certificate: ${cert.url}`);
+    setCertLinks(prev => ({ ...prev, [onChainId]: { url: cert.url, amount } }));
+    setTxMsg("");
   }
 
   const portfolioEntries = Object.entries(portfolio);
@@ -277,6 +292,34 @@ export default function BuyerMarketplace() {
                 <p className="font-medium">Connect MetaMask เพื่อดู Marketplace</p>
               </div>
             )}
+
+            {/* Enable TCUT banner */}
+            {wallet && !tcutEnabled && (
+              <div className="mb-5 flex items-center justify-between gap-4 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">เปิดใช้ TCUT ก่อนซื้อ</p>
+                  <p className="text-xs text-amber-600 mt-0.5">ทำครั้งเดียว — หลังจากนี้กด Buy ได้เลย</p>
+                  <p className="text-xs text-amber-700 mt-1.5 max-w-xl leading-5">
+                    ต้องเปิดใช้ก่อน เพราะมาตรฐาน ERC-20 บังคับให้ contract มี allowance ก่อนจึงจะเรียก <code className="bg-amber-100 px-1 rounded">transferFrom()</code> เพื่อหัก TCUT จาก wallet ของคุณได้
+                  </p>
+                </div>
+                <button
+                  onClick={() => void enableTCUT()}
+                  disabled={enabling}
+                  className="flex-shrink-0 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+                >
+                  {enabling ? "⏳ รอ MetaMask..." : "เปิดใช้ TCUT"}
+                </button>
+              </div>
+            )}
+
+            {wallet && tcutEnabled && (
+              <div className="mb-5 flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5 w-fit">
+                <span>✅</span>
+                <span>TCUT เปิดใช้แล้ว</span>
+              </div>
+            )}
+
             {wallet && listedProjects.length === 0 && (
               <div className="text-center py-16 text-gray-400">
                 <p className="text-4xl mb-3">🌿</p>
@@ -340,10 +383,10 @@ export default function BuyerMarketplace() {
                       </div>
                       <div>
                         <button
-                          disabled={!!actionKey || !wallet}
-                          onClick={() => void runAction(`${item.local.id}:buy`, () => approveAndBuy(item, amount, item.local.id), item.local.id)}
+                          disabled={!!actionKey || !wallet || !tcutEnabled}
+                          onClick={() => void runAction(`${item.local.id}:buy`, () => buyCreditsAction(item, amount, item.local.id), item.local.id)}
                           className="w-full text-sm bg-purple-600 text-white py-2.5 rounded-lg hover:bg-purple-700 disabled:opacity-40 transition-colors font-semibold">
-                          {actionKey === `${item.local.id}:buy` ? "⏳ Processing..." : "🛒 Buy Credits"}
+                          {actionKey === `${item.local.id}:buy` ? "⏳ Processing..." : !tcutEnabled ? "🔒 Enable TCUT ก่อน" : "🛒 Buy Credits"}
                         </button>
                       </div>
                       {cardMsg[item.local.id] && (
@@ -450,9 +493,9 @@ export default function BuyerMarketplace() {
 
                           {certUrl && (
                             <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800">
-                              <p className="font-semibold mb-1">🎉 Certificate minted on IPFS!</p>
-                              <a href={certUrl} target="_blank" rel="noreferrer"
-                                className="text-emerald-600 underline break-all">{certUrl}</a>
+                              <p className="font-semibold mb-1">🎉 Retired {certUrl.amount} credits! Certificate minted on IPFS.</p>
+                              <a href={certUrl.url} target="_blank" rel="noreferrer"
+                                className="text-emerald-600 underline break-all">{certUrl.url}</a>
                             </div>
                           )}
                         </div>

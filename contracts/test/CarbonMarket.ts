@@ -175,12 +175,16 @@ describe("CarbonMarket", function () {
         .withArgs(1n, buyer.address, 5n, 1n);
     });
 
-    it("reverts if non-assessor calls assessProject", async function () {
+    it("allows non-assessor to call assessProject in open verifier demo flow", async function () {
       const { market, seller, other } = await loadFixture(deployFixture);
       await market.connect(seller).submitProject("ipfs://meta", "hash-1", 1_000, 2026);
+
       await expect(
         market.connect(other).assessProject(1, 800, 30, 70, ethers.parseEther("500"))
-      ).to.be.revertedWithCustomError(market, "Unauthorized");
+      ).to.emit(market, "ProjectAssessed").withArgs(1n, 800n, 30n, ethers.parseEther("500"));
+
+      const project = await market.projects(1);
+      expect(project.status).to.equal(1n);
     });
 
     it("reverts if buyer tries to buy before minting", async function () {
@@ -448,8 +452,8 @@ describe("CarbonMarket", function () {
       expect(challenge.fraudVotes).to.equal(1n);
     });
 
-    it("finalizeChallenge slashes stake when fraud confirmed", async function () {
-      const { market, token, reviewer1, reviewer2, reviewer3, marketAddr, REVIEWER_BOND, treasury } =
+    it("finalizeChallenge slashes full stake and rewards challenger when fraud confirmed", async function () {
+      const { market, token, reviewer1, reviewer2, reviewer3 } =
         await loadFixture(challengeFixture);
 
       // Open challenge as reviewer1
@@ -463,15 +467,20 @@ describe("CarbonMarket", function () {
       await time.increase(3 * 24 * 60 * 60 + 1);
 
       const stakedBefore = (await market.projects(1)).stakedAmount;
-      const slashBps = 5000n; // 50%
-      const expectedSlash = (stakedBefore * slashBps) / 10_000n;
+      const challengerBefore = await token.balanceOf(reviewer1.address);
+      const profileBefore = await market.reviewers(reviewer1.address);
 
-      await expect(market.finalizeChallenge(1, Number(slashBps), 0, 10))
+      await expect(market.finalizeChallenge(1, 5000, 0, 10))
         .to.emit(market, "ChallengeFinalized")
-        .withArgs(1n, true, expectedSlash);
+        .withArgs(1n, true, stakedBefore);
 
       const project = await market.projects(1);
       expect(project.status).to.equal(5n); // Slashed
+      expect(project.stakedAmount).to.equal(0n);
+      expect(await token.balanceOf(reviewer1.address)).to.equal(challengerBefore + stakedBefore);
+
+      const profileAfter = await market.reviewers(reviewer1.address);
+      expect(profileAfter.reputation).to.equal(profileBefore.reputation + 10n);
     });
 
     it("finalizeChallenge restores Minted status when valid (no fraud)", async function () {
@@ -546,6 +555,50 @@ describe("CarbonMarket", function () {
 
       const profileAfter = await market.reviewers(reviewer1.address);
       expect(profileAfter.reputation).to.equal(profileBefore.reputation - 5n);
+    });
+
+    it("demoResolveChallenge upholds challenge and slashes full stake to challenger", async function () {
+      const { market, token, reviewer1 } = await loadFixture(challengeFixture);
+
+      await market.connect(reviewer1).openChallenge(1);
+
+      const stakedBefore = (await market.projects(1)).stakedAmount;
+      const challengerBefore = await token.balanceOf(reviewer1.address);
+      const profileBefore = await market.reviewers(reviewer1.address);
+
+      await expect(market.connect(reviewer1).demoResolveChallenge(1, true))
+        .to.emit(market, "ChallengeFinalized")
+        .withArgs(1n, true, stakedBefore);
+
+      const projectAfter = await market.projects(1);
+      expect(projectAfter.status).to.equal(5n);
+      expect(projectAfter.stakedAmount).to.equal(0n);
+      expect(await token.balanceOf(reviewer1.address)).to.equal(challengerBefore + stakedBefore);
+
+      const profileAfter = await market.reviewers(reviewer1.address);
+      expect(profileAfter.reputation).to.equal(profileBefore.reputation + 10n);
+    });
+
+    it("demoResolveChallenge rejects challenge and returns project to Minted", async function () {
+      const { market, reviewer1, treasury, token, REVIEWER_BOND } = await loadFixture(challengeFixture);
+
+      await market.connect(reviewer1).openChallenge(1);
+
+      const treasuryBefore = await token.balanceOf(treasury.address);
+      const profileBefore = await market.reviewers(reviewer1.address);
+      const expectedPenalty = (REVIEWER_BOND * 1000n) / 10_000n;
+
+      await expect(market.connect(reviewer1).demoResolveChallenge(1, false))
+        .to.emit(market, "ChallengeFinalized")
+        .withArgs(1n, false, expectedPenalty);
+
+      const projectAfter = await market.projects(1);
+      expect(projectAfter.status).to.equal(3n);
+
+      const profileAfter = await market.reviewers(reviewer1.address);
+      expect(profileAfter.stakedAmount).to.equal(profileBefore.stakedAmount - expectedPenalty);
+      expect(profileAfter.reputation).to.equal(profileBefore.reputation - 5n);
+      expect(await token.balanceOf(treasury.address)).to.equal(treasuryBefore + expectedPenalty);
     });
 
     it("burns carbon credits when burnAmount > 0 on fraud confirmed", async function () {

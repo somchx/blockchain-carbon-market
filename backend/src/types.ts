@@ -44,6 +44,8 @@ export type RiskAssessment = {
 export type StoredProject = {
   id: string;
   createdAt: string;
+  onChainId?: number;
+  creatorAddress?: string;
   input: ProjectInput;
   assessment: RiskAssessment;
 };

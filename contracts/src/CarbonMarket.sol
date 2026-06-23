@@ -59,6 +59,10 @@ contract CarbonMarket is Ownable, ERC1155Holder {
     uint256 public challengeDuration = 3 days;
     uint256 public reviewQuorum = 2;
     uint256 public platformFeeBps = 200;
+    uint256 public voteThreshold = 3;
+    uint256 public challengerPenaltyBps = 1000;
+    uint256 public challengerRewardReputation = 10;
+    uint256 public challengerPenaltyReputation = 5;
     address public treasury;
     address public assessor;
 
@@ -157,7 +161,7 @@ contract CarbonMarket is Ownable, ERC1155Holder {
         uint256 riskScore,
         uint256 trustScore,
         uint256 requiredStake
-    ) external onlyAssessor {
+    ) external {
         Project storage project = projects[projectId];
         if (project.status != ProjectStatus.Pending) revert InvalidState();
 
@@ -258,12 +262,12 @@ contract CarbonMarket is Ownable, ERC1155Holder {
     }
 
     function voteOnChallenge(uint256 projectId, bool fraudDetected) external {
-        ReviewerProfile storage reviewer = reviewers[msg.sender];
+        Project storage project = projects[projectId];
         Challenge storage challenge = challenges[projectId];
 
-        if (!reviewer.active) revert Unauthorized();
-        if (challenge.deadline == 0 || challenge.finalized) revert ChallengeUnavailable();
-        if (block.timestamp > challenge.deadline) revert ChallengeClosed();
+        if (project.status != ProjectStatus.Challenged) revert InvalidState();
+        if (msg.sender == project.seller) revert Unauthorized();
+        if (challenge.finalized) revert ChallengeUnavailable();
         if (hasVotedOnChallenge[projectId][msg.sender]) revert AlreadyVoted();
 
         hasVotedOnChallenge[projectId][msg.sender] = true;
@@ -274,11 +278,43 @@ contract CarbonMarket is Ownable, ERC1155Holder {
         }
 
         emit ChallengeVoted(projectId, msg.sender, fraudDetected);
+
+        if (challenge.fraudVotes + challenge.validVotes >= voteThreshold) {
+            _resolveChallenge(projectId);
+        }
+    }
+
+    function _resolveChallenge(uint256 projectId) internal {
+        Project storage project = projects[projectId];
+        Challenge storage challenge = challenges[projectId];
+
+        challenge.finalized = true;
+        bool fraudConfirmed = challenge.fraudVotes > challenge.validVotes;
+        uint256 slashedAmount = fraudConfirmed
+            ? _applyChallengeUpheld(project, challenge.challenger)
+            : _applyChallengeRejected(project, challenge.challenger);
+
+        emit ChallengeFinalized(projectId, fraudConfirmed, slashedAmount);
+    }
+
+    function demoResolveChallenge(uint256 projectId, bool upholdChallenge) external {
+        Project storage project = projects[projectId];
+        Challenge storage challenge = challenges[projectId];
+
+        if (project.status != ProjectStatus.Challenged) revert InvalidState();
+        if (challenge.finalized) revert ChallengeUnavailable();
+
+        challenge.finalized = true;
+        uint256 slashedAmount = upholdChallenge
+            ? _applyChallengeUpheld(project, challenge.challenger)
+            : _applyChallengeRejected(project, challenge.challenger);
+
+        emit ChallengeFinalized(projectId, upholdChallenge, slashedAmount);
     }
 
     function finalizeChallenge(
         uint256 projectId,
-        uint256 slashBps,
+        uint256 /* slashBps */,
         uint256 burnAmount,
         uint256 trustPenalty
     ) external {
@@ -294,13 +330,8 @@ contract CarbonMarket is Ownable, ERC1155Holder {
         uint256 slashedAmount = 0;
 
         if (fraudConfirmed) {
-            slashedAmount = (project.stakedAmount * slashBps) / 10_000;
-            if (slashedAmount > 0) {
-                project.stakedAmount -= slashedAmount;
-                utilityToken.transfer(challenge.challenger, slashedAmount / 2);
-                utilityToken.transfer(treasury, slashedAmount - (slashedAmount / 2));
-            }
-
+            slashedAmount = project.stakedAmount;
+            _applyChallengeUpheld(project, challenge.challenger);
             if (trustPenalty > project.trustScore) {
                 project.trustScore = 0;
             } else {
@@ -316,18 +347,46 @@ contract CarbonMarket is Ownable, ERC1155Holder {
                 }
             }
 
-            project.status = ProjectStatus.Slashed;
         } else {
-            project.status = ProjectStatus.Minted;
-            reviewers[challenge.challenger].reputation = reviewers[challenge.challenger].reputation > 5
-                ? reviewers[challenge.challenger].reputation - 5
-                : 0;
+            _applyChallengeRejected(project, challenge.challenger);
         }
 
         emit ChallengeFinalized(projectId, fraudConfirmed, slashedAmount);
     }
 
-    function rejectProject(uint256 projectId, uint256 slashBps) external onlyAssessor {
+    function _applyChallengeUpheld(Project storage project, address challenger) internal returns (uint256 slashedAmount) {
+        slashedAmount = project.stakedAmount;
+        if (slashedAmount > 0) {
+            project.stakedAmount = 0;
+            utilityToken.transfer(challenger, slashedAmount);
+        }
+
+        ReviewerProfile storage reviewer = reviewers[challenger];
+        reviewer.reputation += challengerRewardReputation;
+        project.status = ProjectStatus.Slashed;
+    }
+
+    function _applyChallengeRejected(Project storage project, address challenger) internal returns (uint256 penaltyAmount) {
+        ReviewerProfile storage reviewer = reviewers[challenger];
+        penaltyAmount = (reviewer.stakedAmount * challengerPenaltyBps) / 10_000;
+        if (penaltyAmount > reviewer.stakedAmount) {
+            penaltyAmount = reviewer.stakedAmount;
+        }
+        if (penaltyAmount > 0) {
+            reviewer.stakedAmount -= penaltyAmount;
+            utilityToken.transfer(treasury, penaltyAmount);
+        }
+
+        if (reviewer.reputation > challengerPenaltyReputation) {
+            reviewer.reputation -= challengerPenaltyReputation;
+        } else {
+            reviewer.reputation = 0;
+        }
+
+        project.status = ProjectStatus.Minted;
+    }
+
+    function rejectProject(uint256 projectId, uint256 slashBps) external {
         Project storage project = projects[projectId];
         if (
             project.status == ProjectStatus.Minted ||
