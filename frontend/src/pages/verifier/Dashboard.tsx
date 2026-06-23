@@ -104,11 +104,14 @@ export default function VerifierDashboard() {
   // Challenge state
   const [reviewerProfile, setReviewerProfile] = useState<ReviewerProfile | null>(null);
   const [reviewerBondAmt, setReviewerBondAmt] = useState("100");
+  const [minimumVerifierReputation, setMinimumVerifierReputation] = useState(50);
   const [challengeMap, setChallengeMap] = useState<Record<number, ChallengeData>>({});
   const [hasVotedMap, setHasVotedMap] = useState<Record<number, boolean>>({});
   const [demoOutcomeMap, setDemoOutcomeMap] = useState<Record<number, "upheld" | "rejected">>({});
 
-  const canApproveOnChain = !!wallet && hasVerifierAccess === true;
+  const isRegistered = reviewerProfile?.active === true;
+  const meetsVerifierReputation = (reviewerProfile?.reputation ?? 0) >= minimumVerifierReputation;
+  const canApproveOnChain = !!wallet && hasVerifierAccess === true && isRegistered && meetsVerifierReputation;
 
   async function loadProjects(): Promise<StoredProject[]> {
     const res = await fetch(`${apiBase}/projects`);
@@ -197,9 +200,10 @@ export default function VerifierDashboard() {
   async function loadReviewerData(w: WalletState) {
     try {
       const { market } = await getContracts(w.provider);
-      const [profile, bond] = await Promise.all([
+      const [profile, bond, minRep] = await Promise.all([
         market.reviewers(w.account),
         market.reviewerBond(),
+        market.minimumVerifierReputationToApprove(),
       ]);
       setReviewerProfile({
         active: profile.active,
@@ -207,6 +211,7 @@ export default function VerifierDashboard() {
         reputation: Number(profile.reputation),
       });
       setReviewerBondAmt(formatUnits(bond, 18));
+      setMinimumVerifierReputation(Number(minRep));
     } catch {}
   }
 
@@ -426,8 +431,6 @@ export default function VerifierDashboard() {
     return true;
   });
 
-  const isRegistered = reviewerProfile?.active === true;
-
   return (
     <div className="min-h-screen bg-gray-50">
       <WalletBar role="verifier" />
@@ -553,6 +556,9 @@ export default function VerifierDashboard() {
                     <p className="text-xs text-blue-400 mt-1">
                       เงินมัดจำนี้จะถูกหักเล็กน้อยถ้า Challenge ไม่สำเร็จ — และได้รางวัลพร้อมคะแนนเพิ่มถ้า Challenge แล้วถูก
                     </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      เกณฑ์ approve ปัจจุบันจาก DAO: reputation อย่างน้อย {minimumVerifierReputation} คะแนน
+                    </p>
                   </>
                 ) : (
                   <>
@@ -561,6 +567,9 @@ export default function VerifierDashboard() {
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
                       เงินประกันความซื่อสัตย์ — แสดงว่าคุณรับผิดชอบต่อผลการตรวจสอบ
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      และต้องมี reputation อย่างน้อย {minimumVerifierReputation} คะแนนก่อน approve โครงการได้
                     </p>
                   </>
                 )}
@@ -731,6 +740,11 @@ export default function VerifierDashboard() {
                             </div>
                             {!wallet && (
                               <p className="text-xs text-gray-400 mt-2">Connect wallet to approve on-chain</p>
+                            )}
+                            {wallet && !canApproveOnChain && (
+                              <p className="text-xs text-amber-600 mt-2">
+                                ต้องมี verifier access, ลงทะเบียน reviewer และมี reputation อย่างน้อย {minimumVerifierReputation} คะแนนก่อน approve ได้
+                              </p>
                             )}
                             {onChain?.status === 0 && (
                               <p className="text-xs text-gray-400 mt-2 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">

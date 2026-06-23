@@ -364,8 +364,63 @@ describe("CarbonMarket", function () {
     it("owner can setReviewerBond", async function () {
       const { market, owner } = await loadFixture(deployFixture);
       const newBond = ethers.parseEther("200");
-      await market.connect(owner).setReviewerBond(newBond);
+      await expect(market.connect(owner).setReviewerBond(newBond))
+        .to.emit(market, "ReviewerBondUpdated")
+        .withArgs(newBond);
       expect(await market.reviewerBond()).to.equal(newBond);
+    });
+
+    it("owner can update governance parameters", async function () {
+      const { market, owner } = await loadFixture(deployFixture);
+
+      await expect(market.connect(owner).setChallengeDuration(7 * 24 * 60 * 60))
+        .to.emit(market, "ChallengeDurationUpdated")
+        .withArgs(7 * 24 * 60 * 60);
+      expect(await market.challengeDuration()).to.equal(7 * 24 * 60 * 60);
+
+      await expect(market.connect(owner).setVoteThreshold(5))
+        .to.emit(market, "VoteThresholdUpdated")
+        .withArgs(5);
+      expect(await market.voteThreshold()).to.equal(5);
+
+      await expect(market.connect(owner).setChallengerPenaltyBps(750))
+        .to.emit(market, "ChallengerPenaltyBpsUpdated")
+        .withArgs(750);
+      expect(await market.challengerPenaltyBps()).to.equal(750);
+
+      await expect(market.connect(owner).setChallengerRewardReputation(15))
+        .to.emit(market, "ChallengerRewardReputationUpdated")
+        .withArgs(15);
+      expect(await market.challengerRewardReputation()).to.equal(15);
+
+      await expect(market.connect(owner).setChallengerPenaltyReputation(8))
+        .to.emit(market, "ChallengerPenaltyReputationUpdated")
+        .withArgs(8);
+      expect(await market.challengerPenaltyReputation()).to.equal(8);
+
+      await expect(market.connect(owner).setPlatformFeeBps(125))
+        .to.emit(market, "PlatformFeeBpsUpdated")
+        .withArgs(125);
+      expect(await market.platformFeeBps()).to.equal(125);
+
+      await expect(market.connect(owner).setMinimumVerifierReputationToApprove(60))
+        .to.emit(market, "MinimumVerifierReputationUpdated")
+        .withArgs(60);
+      expect(await market.minimumVerifierReputationToApprove()).to.equal(60);
+    });
+
+    it("reverts on invalid governance config", async function () {
+      const { market, owner } = await loadFixture(deployFixture);
+      await expect(market.connect(owner).setReviewerBond(0))
+        .to.be.revertedWithCustomError(market, "InvalidConfig");
+      await expect(market.connect(owner).setChallengeDuration(0))
+        .to.be.revertedWithCustomError(market, "InvalidConfig");
+      await expect(market.connect(owner).setVoteThreshold(0))
+        .to.be.revertedWithCustomError(market, "InvalidConfig");
+      await expect(market.connect(owner).setChallengerPenaltyBps(10_001))
+        .to.be.revertedWithCustomError(market, "InvalidConfig");
+      await expect(market.connect(owner).setPlatformFeeBps(10_001))
+        .to.be.revertedWithCustomError(market, "InvalidConfig");
     });
 
     it("non-owner cannot setAssessor", async function () {
@@ -383,6 +438,24 @@ describe("CarbonMarket", function () {
     it("non-owner cannot setReviewerBond", async function () {
       const { market, other } = await loadFixture(deployFixture);
       await expect(market.connect(other).setReviewerBond(ethers.parseEther("999")))
+        .to.be.revertedWithCustomError(market, "OwnableUnauthorizedAccount");
+    });
+
+    it("non-owner cannot update governance parameters", async function () {
+      const { market, other } = await loadFixture(deployFixture);
+      await expect(market.connect(other).setChallengeDuration(100))
+        .to.be.revertedWithCustomError(market, "OwnableUnauthorizedAccount");
+      await expect(market.connect(other).setVoteThreshold(4))
+        .to.be.revertedWithCustomError(market, "OwnableUnauthorizedAccount");
+      await expect(market.connect(other).setChallengerPenaltyBps(500))
+        .to.be.revertedWithCustomError(market, "OwnableUnauthorizedAccount");
+      await expect(market.connect(other).setChallengerRewardReputation(9))
+        .to.be.revertedWithCustomError(market, "OwnableUnauthorizedAccount");
+      await expect(market.connect(other).setChallengerPenaltyReputation(9))
+        .to.be.revertedWithCustomError(market, "OwnableUnauthorizedAccount");
+      await expect(market.connect(other).setPlatformFeeBps(150))
+        .to.be.revertedWithCustomError(market, "OwnableUnauthorizedAccount");
+      await expect(market.connect(other).setMinimumVerifierReputationToApprove(70))
         .to.be.revertedWithCustomError(market, "OwnableUnauthorizedAccount");
     });
   });

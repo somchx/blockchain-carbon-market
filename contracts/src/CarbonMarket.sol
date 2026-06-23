@@ -63,6 +63,7 @@ contract CarbonMarket is Ownable, ERC1155Holder {
     uint256 public challengerPenaltyBps = 1000;
     uint256 public challengerRewardReputation = 10;
     uint256 public challengerPenaltyReputation = 5;
+    uint256 public minimumVerifierReputationToApprove = 50;
     address public treasury;
     address public assessor;
 
@@ -83,8 +84,17 @@ contract CarbonMarket is Ownable, ERC1155Holder {
     event ChallengeFinalized(uint256 indexed projectId, bool fraudConfirmed, uint256 slashedAmount);
     event RewardIssued(uint256 indexed projectId, uint256 rewardAmount, uint256 updatedTrustScore);
     event ProjectRejected(uint256 indexed projectId, address indexed assessor, uint256 slashedAmount);
+    event ReviewerBondUpdated(uint256 newAmount);
+    event ChallengeDurationUpdated(uint256 newDuration);
+    event VoteThresholdUpdated(uint256 newThreshold);
+    event ChallengerPenaltyBpsUpdated(uint256 newBps);
+    event ChallengerRewardReputationUpdated(uint256 newPoints);
+    event ChallengerPenaltyReputationUpdated(uint256 newPoints);
+    event PlatformFeeBpsUpdated(uint256 newBps);
+    event MinimumVerifierReputationUpdated(uint256 newPoints);
 
     error InvalidState();
+    error InvalidConfig();
     error Unauthorized();
     error InsufficientStake();
     error ChallengeUnavailable();
@@ -125,7 +135,48 @@ contract CarbonMarket is Ownable, ERC1155Holder {
     }
 
     function setReviewerBond(uint256 amount) external onlyOwner {
+        if (amount == 0) revert InvalidConfig();
         reviewerBond = amount;
+        emit ReviewerBondUpdated(amount);
+    }
+
+    function setChallengeDuration(uint256 durationSeconds) external onlyOwner {
+        if (durationSeconds == 0) revert InvalidConfig();
+        challengeDuration = durationSeconds;
+        emit ChallengeDurationUpdated(durationSeconds);
+    }
+
+    function setVoteThreshold(uint256 votes) external onlyOwner {
+        if (votes == 0) revert InvalidConfig();
+        voteThreshold = votes;
+        emit VoteThresholdUpdated(votes);
+    }
+
+    function setChallengerPenaltyBps(uint256 bps) external onlyOwner {
+        if (bps > 10_000) revert InvalidConfig();
+        challengerPenaltyBps = bps;
+        emit ChallengerPenaltyBpsUpdated(bps);
+    }
+
+    function setChallengerRewardReputation(uint256 points) external onlyOwner {
+        challengerRewardReputation = points;
+        emit ChallengerRewardReputationUpdated(points);
+    }
+
+    function setChallengerPenaltyReputation(uint256 points) external onlyOwner {
+        challengerPenaltyReputation = points;
+        emit ChallengerPenaltyReputationUpdated(points);
+    }
+
+    function setPlatformFeeBps(uint256 bps) external onlyOwner {
+        if (bps > 10_000) revert InvalidConfig();
+        platformFeeBps = bps;
+        emit PlatformFeeBpsUpdated(bps);
+    }
+
+    function setMinimumVerifierReputationToApprove(uint256 points) external onlyOwner {
+        minimumVerifierReputationToApprove = points;
+        emit MinimumVerifierReputationUpdated(points);
     }
 
     function submitProject(
