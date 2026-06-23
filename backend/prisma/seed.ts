@@ -3,66 +3,46 @@ import { assessProject } from "../src/riskEngine.js";
 import { saveProject } from "../src/store.js";
 import { prisma } from "../src/db.js";
 
+const DEMO_CREATOR_ADDRESS = "0xF07cc7DfEa269C8Ea36ed63538503A5b7f4484D8";
+
 const SEED_PROJECTS = [
   {
     id: "SEED-1",
-    sellerName: "บริษัท สยามกรีน จำกัด",
-    projectName: "ป่าชายเลนอนุรักษ์ อ.ดอนสัก",
-    province: "SuratThani",
-    landAreaRai: 850,
-    projectType: "mangrove" as const,
-    requestedCredits: 420,
-    selfReportedReduction: 380,
-    vintageYear: 2024,
+    sellerName: "สมชาย รักษ์โลก",
+    projectName: "โครงการฟื้นฟูป่าชุมชน เชียงใหม่",
+    province: "ChiangMai",
+    landAreaRai: 240,
+    projectType: "forest" as const,
+    requestedCredits: 520,
+    selfReportedReduction: 470,
+    vintageYear: 2025,
   },
   {
     id: "SEED-2",
-    sellerName: "บริษัท โคราช โซลาร์ จำกัด",
-    projectName: "โซลาร์ฟาร์ม อ.ปากช่อง",
-    province: "NakhonRatchasima",
-    landAreaRai: 1200,
+    sellerName: "สมชาย รักษ์โลก",
+    projectName: "โครงการโซลาร์ชุมชน ขอนแก่น",
+    province: "KhonKaen",
+    landAreaRai: 130,
     projectType: "solar" as const,
-    requestedCredits: 680,
-    selfReportedReduction: 650,
-    vintageYear: 2024,
+    requestedCredits: 310,
+    selfReportedReduction: 295,
+    vintageYear: 2025,
   },
   {
     id: "SEED-3",
-    sellerName: "วิสาหกิจชุมชน ขอนแก่นไบโอแก๊ส",
-    projectName: "ก๊าซชีวภาพจากฟาร์มสุกร ขอนแก่น",
-    province: "KhonKaen",
-    landAreaRai: 95,
+    sellerName: "สมชาย รักษ์โลก",
+    projectName: "โครงการไบโอแก๊ส ฟาร์มพิษณุโลก",
+    province: "Phitsanulok",
+    landAreaRai: 88,
     projectType: "biogas" as const,
-    requestedCredits: 210,
-    selfReportedReduction: 195,
-    vintageYear: 2023,
-  },
-  {
-    id: "SEED-4",
-    sellerName: "มูลนิธิป่าเชียงใหม่",
-    projectName: "ฟื้นฟูป่าต้นน้ำดอยอินทนนท์",
-    province: "ChiangMai",
-    landAreaRai: 3200,
-    projectType: "forest" as const,
-    requestedCredits: 960,
-    selfReportedReduction: 890,
-    vintageYear: 2024,
-  },
-  {
-    id: "SEED-5",
-    sellerName: "บริษัท ภูเก็ต ซันพาวเวอร์ จำกัด",
-    projectName: "โซลาร์เซลล์หลังคาโรงแรม ภูเก็ต",
-    province: "Phuket",
-    landAreaRai: 18,
-    projectType: "solar" as const,
-    requestedCredits: 155,
-    selfReportedReduction: 140,
+    requestedCredits: 260,
+    selfReportedReduction: 240,
     vintageYear: 2024,
   },
 ] as const;
 
 async function main() {
-  console.log("🌱 Seeding Neon DB with 5 Thai carbon projects...\n");
+  console.log("🌱 Seeding DB with 3 initial demo projects...\n");
 
   for (const seed of SEED_PROJECTS) {
     const existing = await prisma.carbonProject.findUnique({ where: { id: seed.id } });
@@ -81,10 +61,11 @@ async function main() {
         createdAt: new Date().toISOString(),
         input,
         assessment,
-      });
+      }, DEMO_CREATOR_ADDRESS);
       console.log(
         `✅ ${id} saved — risk: ${assessment.riskScore}, trust: ${assessment.trustScore}, ` +
-        `approved: ${assessment.approvedCredits} credits, source: ${(assessment.signals as { dataSource?: string }).dataSource ?? "unknown"}`
+        `approved: ${assessment.approvedCredits} credits, creator: ${DEMO_CREATOR_ADDRESS}, ` +
+        `source: ${(assessment.signals as { dataSource?: string }).dataSource ?? "unknown"}`
       );
     } catch (err) {
       console.error(`❌ ${id} failed:`, err instanceof Error ? err.message : err);
