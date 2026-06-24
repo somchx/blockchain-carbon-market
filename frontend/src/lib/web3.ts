@@ -1,5 +1,5 @@
 import { BrowserProvider, Contract, formatUnits } from "ethers";
-import { carbonCreditAbi, carbonMarketAbi, erc20Abi, governanceTokenAbi, governorAbi, retireCertificateAbi, riskOracleAbi, tcutSaleAbi } from "./contracts";
+import { carbonCreditAbi, carbonMarketAbi, cgovSaleAbi, erc20Abi, governanceTokenAbi, governorAbi, retireCertificateAbi, riskOracleAbi, tcutSaleAbi } from "./contracts";
 
 type InjectedProvider = {
   request: (args: { method: string; params?: unknown[] | Record<string, unknown> }) => Promise<unknown>;
@@ -28,6 +28,7 @@ export type ContractConfig = {
   governorAddress?: string;
   oracleAddress?: string;
   tcutSaleAddress?: string;
+  cgovSaleAddress?: string;
 };
 
 function trimAddr(value: string | undefined): string | undefined {
@@ -58,6 +59,7 @@ export function getContractConfig(): ContractConfig {
     governorAddress: trimAddr(import.meta.env.VITE_GOVERNOR_ADDRESS),
     oracleAddress: trimAddr(import.meta.env.VITE_ORACLE_ADDRESS),
     tcutSaleAddress: trimAddr(import.meta.env.VITE_TCUT_SALE_ADDRESS),
+    cgovSaleAddress: trimAddr(import.meta.env.VITE_CGOV_SALE_ADDRESS),
   };
 }
 
@@ -176,6 +178,27 @@ export function getTCUTSaleContract(provider: BrowserProvider) {
 
 export async function readTCUTSaleInfo(provider: BrowserProvider, account?: string) {
   const sale = getTCUTSaleContract(provider);
+  const [rate, inventory, faucetAmount, cooldownSec] = await Promise.all([
+    sale.rate() as Promise<bigint>,
+    sale.tokenBalance() as Promise<bigint>,
+    sale.faucetAmount() as Promise<bigint>,
+    sale.faucetCooldown() as Promise<bigint>,
+  ]);
+  let secondsUntilClaim = 0n;
+  if (account) {
+    secondsUntilClaim = await (sale.timeUntilNextClaim(account) as Promise<bigint>);
+  }
+  return { rate, inventory, faucetAmount, cooldownSec, secondsUntilClaim };
+}
+
+export function getCGOVSaleContract(provider: BrowserProvider) {
+  const config = getContractConfig();
+  const addr = requireAddress(config.cgovSaleAddress, "VITE_CGOV_SALE_ADDRESS");
+  return new Contract(addr, cgovSaleAbi, provider);
+}
+
+export async function readCGOVSaleInfo(provider: BrowserProvider, account?: string) {
+  const sale = getCGOVSaleContract(provider);
   const [rate, inventory, faucetAmount, cooldownSec] = await Promise.all([
     sale.rate() as Promise<bigint>,
     sale.tokenBalance() as Promise<bigint>,

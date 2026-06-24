@@ -116,6 +116,19 @@ export const tcutSaleAbi = [
   "event FaucetClaimed(address indexed claimant, uint256 amount)"
 ] as const;
 
+export const cgovSaleAbi = [
+  "function rate() view returns (uint256)",
+  "function faucetAmount() view returns (uint256)",
+  "function faucetCooldown() view returns (uint256)",
+  "function lastClaim(address) view returns (uint256)",
+  "function timeUntilNextClaim(address user) view returns (uint256)",
+  "function tokenBalance() view returns (uint256)",
+  "function buyTokens() payable",
+  "function claimFaucet()",
+  "event TokensPurchased(address indexed buyer, uint256 ethPaid, uint256 cgovReceived)",
+  "event FaucetClaimed(address indexed claimant, uint256 amount)"
+] as const;
+
 export const carbonCreditAbi = [
   "function balanceOf(address account, uint256 id) view returns (uint256)"
 ] as const;

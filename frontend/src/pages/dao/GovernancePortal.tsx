@@ -1,7 +1,7 @@
-import { formatUnits, Interface, id as ethersId } from "ethers";
+import { formatUnits, Interface, id as ethersId, parseEther } from "ethers";
 import { useEffect, useState } from "react";
 import WalletBar from "../../components/WalletBar";
-import { getConnectedWallet, getContractConfig, getContracts, type WalletState } from "../../lib/web3";
+import { getCGOVSaleContract, getConnectedWallet, getContractConfig, getContracts, readCGOVSaleInfo, type WalletState } from "../../lib/web3";
 
 const config = getContractConfig();
 
@@ -150,6 +150,7 @@ export default function GovernancePortal() {
   const [wallet, setWallet] = useState<WalletState | null>(null);
   const [govBalance, setGovBalance] = useState("—");
   const [votingPower, setVotingPower] = useState("0");
+  const [proposalThreshold, setProposalThreshold] = useState("—");
   const [delegatee, setDelegatee] = useState<string | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [rules, setRules] = useState<GovernanceRule[]>([]);
@@ -161,6 +162,12 @@ export default function GovernancePortal() {
   const [propType, setPropType] = useState<ProposalType>("changeReviewerBond");
   const [propParam, setPropParam] = useState("");
   const [propDesc, setPropDesc] = useState("");
+
+  const [cgovInventory, setCgovInventory] = useState("—");
+  const [cgovFaucetAmount, setCgovFaucetAmount] = useState("500");
+  const [cgovCooldownSec, setCgovCooldownSec] = useState(0n);
+  const [cgovRate, setCgovRate] = useState(10_000n);
+  const [ethBuyInput, setEthBuyInput] = useState("");
 
   const selectedOption = PROPOSAL_OPTIONS.find((option) => option.type === propType) ?? PROPOSAL_OPTIONS[0];
 
@@ -178,14 +185,17 @@ export default function GovernancePortal() {
         rawBal,
         rawVotes,
         rawDelegatee,
+        rawProposalThreshold,
       ] = await Promise.all([
         govToken.balanceOf(w.account),
         govToken.getVotes(w.account),
         govToken.delegates(w.account),
+        governor.proposalThreshold(),
       ]);
 
       setGovBalance(Number(formatUnits(rawBal, 18)).toLocaleString());
       setVotingPower(Number(formatUnits(rawVotes, 18)).toLocaleString());
+      setProposalThreshold(Number(formatUnits(rawProposalThreshold, 18)).toLocaleString());
       setDelegatee(rawDelegatee as string);
 
       const governanceReads = await Promise.allSettled([
@@ -226,6 +236,14 @@ export default function GovernancePortal() {
         { key: "platformFeeBps", label: "Marketplace Fee", value: rawPlatformFee > 0n ? `${rawPlatformFee.toString()} bps` : "—", helper: "ค่าธรรมเนียม marketplace ของระบบ", badge: "On-chain" },
         { key: "minimumVerifierReputationToApprove", label: "Min Verifier Reputation", value: rawMinVerifierRep > 0n ? `${rawMinVerifierRep.toString()} คะแนน` : "—", helper: "เกณฑ์ reputation ขั้นต่ำสำหรับ verifier policy", badge: "Hybrid" },
       ]);
+
+      try {
+        const saleInfo = await readCGOVSaleInfo(w.provider, w.account);
+        setCgovInventory(Number(formatUnits(saleInfo.inventory, 18)).toLocaleString());
+        setCgovFaucetAmount(Number(formatUnits(saleInfo.faucetAmount, 18)).toLocaleString());
+        setCgovCooldownSec(saleInfo.secondsUntilClaim);
+        setCgovRate(saleInfo.rate);
+      } catch { /* cgovSale not configured */ }
 
       const filter = (governor as any).filters.ProposalCreated();
       const events = await (governor as any).queryFilter(filter, 0);
@@ -275,6 +293,27 @@ export default function GovernancePortal() {
     } finally {
       setActionKey(null);
     }
+  }
+
+  async function claimCGOVFaucet() {
+    if (!wallet) return;
+    const signer = await wallet.provider.getSigner();
+    const sale = getCGOVSaleContract(wallet.provider);
+    const tx = await (sale.connect(signer) as any).claimFaucet();
+    await tx.wait();
+    setTxMsg(`✅ รับ ${cgovFaucetAmount} CGOV แล้ว! อย่าลืม Delegate votes ด้วย`);
+  }
+
+  async function buyCGOVWithETH() {
+    if (!wallet || !ethBuyInput) return;
+    const signer = await wallet.provider.getSigner();
+    const sale = getCGOVSaleContract(wallet.provider);
+    const ethValue = parseEther(ethBuyInput);
+    const tx = await (sale.connect(signer) as any).buyTokens({ value: ethValue });
+    await tx.wait();
+    const received = Number(ethBuyInput) * Number(cgovRate);
+    setTxMsg(`✅ ซื้อ ${received.toLocaleString()} CGOV ด้วย ${ethBuyInput} ETH สำเร็จ! อย่าลืม Delegate votes ด้วย`);
+    setEthBuyInput("");
   }
 
   async function delegateToSelf() {
@@ -348,6 +387,7 @@ export default function GovernancePortal() {
 
   const selfDelegated = delegatee?.toLowerCase() === wallet?.account.toLowerCase();
   const hasVotingPower = parseFloat(votingPower.replace(/,/g, "")) > 0;
+  const hasProposalThreshold = parseFloat(votingPower.replace(/,/g, "")) >= parseFloat(proposalThreshold.replace(/,/g, ""));
   const previewText = propParam ? selectedOption.describe(propParam) : "กรอกค่าใหม่เพื่อดูผลกระทบของ proposal นี้";
 
   return (
@@ -380,6 +420,70 @@ export default function GovernancePortal() {
 
         {wallet && (
           <>
+            {/* ── CGOV Acquisition ───────────────────────────────────────── */}
+            <div className="bg-white rounded-2xl border border-purple-200 shadow-sm p-6 mb-6">
+              <div className="flex items-start justify-between mb-1">
+                <h2 className="text-sm font-semibold text-purple-700 uppercase tracking-wide">รับ CGOV Token</h2>
+                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold">คงเหลือ {cgovInventory} CGOV</span>
+              </div>
+              <p className="text-xs text-gray-400 mb-5">ต้องถือ CGOV และ Delegate ก่อนจึงจะโหวตหรือเสนอ Proposal ได้</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Faucet */}
+                <div className="rounded-xl border border-purple-100 bg-purple-50 p-4">
+                  <p className="text-sm font-semibold text-purple-900 mb-1">🪙 รับฟรี (Faucet)</p>
+                  <p className="text-xs text-purple-600 mb-3">{cgovFaucetAmount} CGOV ต่อครั้ง · cooldown 24 ชม.</p>
+                  {cgovCooldownSec > 0n ? (
+                    <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                      ⏳ รอ {Math.ceil(Number(cgovCooldownSec) / 3600)} ชม. อีก {Math.ceil((Number(cgovCooldownSec) % 3600) / 60)} นาที
+                    </div>
+                  ) : (
+                    <button
+                      disabled={!!actionKey}
+                      onClick={() => void runAction("faucet", claimCGOVFaucet)}
+                      className="w-full py-2 rounded-xl bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 disabled:opacity-40 transition-colors"
+                    >
+                      {actionKey === "faucet" ? "กำลังรับ..." : `🎁 รับ ${cgovFaucetAmount} CGOV ฟรี`}
+                    </button>
+                  )}
+                </div>
+
+                {/* Buy with ETH */}
+                <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4">
+                  <p className="text-sm font-semibold text-indigo-900 mb-1">💰 ซื้อด้วย ETH</p>
+                  <p className="text-xs text-indigo-600 mb-3">1 ETH = {Number(cgovRate).toLocaleString()} CGOV (การลงหุ้นในระบบ)</p>
+                  <div className="flex gap-2">
+                    <input
+                      value={ethBuyInput}
+                      onChange={(e) => setEthBuyInput(e.target.value)}
+                      placeholder="0.01"
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      className="flex-1 border border-indigo-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                    />
+                    <button
+                      disabled={!!actionKey || !ethBuyInput || Number(ethBuyInput) <= 0}
+                      onClick={() => void runAction("buy", buyCGOVWithETH)}
+                      className="px-4 py-1.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40 transition-colors whitespace-nowrap"
+                    >
+                      {actionKey === "buy" ? "..." : "ซื้อ"}
+                    </button>
+                  </div>
+                  {ethBuyInput && Number(ethBuyInput) > 0 && (
+                    <p className="text-xs text-indigo-500 mt-1.5">
+                      ≈ {(Number(ethBuyInput) * Number(cgovRate)).toLocaleString()} CGOV
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-xl bg-gray-50 border border-gray-200 px-4 py-3 text-xs text-gray-500 leading-5">
+                <span className="font-semibold text-gray-700">ขั้นตอนหลังได้ CGOV:</span>{" "}
+                1) รับ CGOV → 2) กด <span className="font-semibold">Delegate Votes to Myself</span> → 3) โหวตหรือเสนอ Proposal ได้เลย
+              </div>
+            </div>
+
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-6">
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">Voting Power</h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
@@ -398,6 +502,9 @@ export default function GovernancePortal() {
                   </p>
                 </div>
               </div>
+              <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                Proposal Threshold ปัจจุบัน: <span className="font-semibold text-gray-900">{proposalThreshold} CGOV</span>
+              </div>
               {!selfDelegated && (
                 <button
                   disabled={!!actionKey}
@@ -408,9 +515,16 @@ export default function GovernancePortal() {
                 </button>
               )}
               {selfDelegated && !hasVotingPower && (
-                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-2 text-center">
-                  ⚠️ Delegated แล้วแต่ยังไม่มี CGOV tokens — ต้องมี tokens ถึงจะ vote ได้
-                </p>
+                <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="font-semibold">⚠️ Delegated แล้วแต่ยังไม่มี CGOV tokens</p>
+                  <p className="mt-1">wallet นี้ต้องได้รับ `CGOV allocation` หรือ `airdrop` ก่อน จึงจะมี voting power และโหวตได้ตาม flow DAO จริง</p>
+                </div>
+              )}
+              {selfDelegated && hasVotingPower && !hasProposalThreshold && (
+                <div className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="font-semibold">ℹ️ Vote ได้แล้ว แต่ยังเสนอ proposal เองไม่ได้</p>
+                  <p className="mt-1">voting power ปัจจุบันต่ำกว่า proposal threshold ที่กำหนดไว้ จึงใช้สิทธิ์โหวตได้ แต่ยังสร้าง proposal ใหม่ไม่ได้</p>
+                </div>
               )}
             </div>
 
@@ -482,7 +596,7 @@ export default function GovernancePortal() {
                 </div>
 
                 <button
-                  disabled={!!actionKey || !propParam || !propDesc || !selfDelegated || !!legacyContractWarning}
+                  disabled={!!actionKey || !propParam || !propDesc || !selfDelegated || !hasProposalThreshold || !!legacyContractWarning}
                   onClick={() => void runAction("propose", createProposal)}
                   className="w-full py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40 transition-colors"
                 >
@@ -490,6 +604,9 @@ export default function GovernancePortal() {
                 </button>
                 {!selfDelegated && (
                   <p className="text-xs text-gray-400 text-center">ต้อง Delegate votes ก่อนถึงจะ propose ได้</p>
+                )}
+                {selfDelegated && !hasProposalThreshold && (
+                  <p className="text-xs text-gray-400 text-center">ต้องมี voting power อย่างน้อย {proposalThreshold} CGOV ก่อนถึงจะ propose ได้</p>
                 )}
               </div>
             </div>
