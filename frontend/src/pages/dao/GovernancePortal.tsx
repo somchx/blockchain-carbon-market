@@ -492,7 +492,7 @@ export default function GovernancePortal() {
     if (!wallet) return;
     const { governor } = await getContracts(wallet.provider);
     const descHash = ethersId(proposal.description);
-    const tx = await governor.execute(proposal.targets, proposal.values, proposal.calldatas, descHash);
+    const tx = await governor.execute([...proposal.targets], [...proposal.values], [...proposal.calldatas], descHash);
     await (tx as any).wait();
     setTxMsg("✅ Proposal executed! Changes applied on-chain.");
   }
