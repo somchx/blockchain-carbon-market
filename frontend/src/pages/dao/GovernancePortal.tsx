@@ -544,7 +544,13 @@ export default function GovernancePortal() {
   const hasVotingPower = parseFloat(votingPower.replace(/,/g, "")) > 0;
   const hasProposalThreshold = parseFloat(votingPower.replace(/,/g, "")) >= parseFloat(proposalThreshold.replace(/,/g, ""));
   const previewText = propParam ? selectedOption.describe(propParam) : "กรอกค่าใหม่เพื่อดูผลกระทบของ proposal นี้";
-  const isOwner = governorOwner && wallet?.account.toLowerCase() === governorOwner.toLowerCase();
+  // isOwner: both wallet AND governorOwner must be present, and must match exactly
+  const isOwner = !!(
+    wallet?.account &&
+    governorOwner &&
+    governorOwner !== "0x0000000000000000000000000000000000000000" &&
+    wallet.account.toLowerCase() === governorOwner.toLowerCase()
+  );
   const bondDisplay = Number(formatUnits(proposalBondAmount, 18)).toLocaleString();
 
   return (
@@ -611,13 +617,13 @@ export default function GovernancePortal() {
                   </p>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-3 text-center col-span-2 sm:col-span-1">
-                  <p className="text-xs text-gray-500 mb-1">Total Circulating</p>
+                  <p className="text-xs text-gray-500 mb-1">Total Minted</p>
                   <p className="text-lg font-bold text-gray-900">
                     {holders.length > 0
                       ? Number(formatUnits(holders.reduce((s, h) => s + h.balance, 0n), 18)).toLocaleString()
                       : "—"}
                   </p>
-                  <p className="text-xs text-gray-400">CGOV</p>
+                  <p className="text-xs text-gray-400">CGOV (รวม Sale contract)</p>
                 </div>
               </div>
 
