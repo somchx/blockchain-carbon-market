@@ -7,6 +7,8 @@
     "deploy": "hardhat run scripts/deploy.ts",
     "deploy:sepolia": "hardhat run --network sepolia scripts/deploy.ts",
     "deploy:oracle:sepolia": "hardhat run --network sepolia scripts/deploy-oracle.ts",
+    "airdrop:cgov": "hardhat run scripts/airdrop-cgov.ts",
+    "airdrop:cgov:sepolia": "hardhat run --network sepolia scripts/airdrop-cgov.ts",
     "test": "hardhat test",
     "lint": "echo 'No contract lint configured'"
   },

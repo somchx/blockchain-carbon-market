@@ -188,9 +188,6 @@ export default function VerifierDashboard() {
       }
       const updated = await loadProjects();
       await loadOnChain(w, updated);
-      if (!silent) {
-        setTxMsg("✅ Sync สำเร็จ — พบและอัปเดต on-chain ID แล้ว");
-      }
       return updated;
     } finally {
       setSyncing(false);

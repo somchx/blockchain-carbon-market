@@ -1,7 +1,7 @@
 การออกแบบสถาปัตยกรรมการออกคาร์บอนเครดิตบนบล็อกเชนที่ขับเคลื่อนด้วยการประเมินความเสี่ยงสำหรับตลาดคาร์บอนที่มีความน่าเชื่อถือสูง
 Abstract
 ตลาดคาร์บอนเครดิตเป็นกลไกสำคัญในการลดการปล่อยก๊าซเรือนกระจก โดยเปิดโอกาสให้หน่วยงานที่สามารถลดหรือกักเก็บคาร์บอนได้สร้างและซื้อขายคาร์บอนเครดิต อย่างไรก็ตาม ระบบตลาดคาร์บอนเครดิตในปัจจุบันยังคงเผชิญข้อจำกัดด้านความโปร่งใส ความน่าเชื่อถือของข้อมูล การตรวจสอบย้อนหลัง และความเสี่ยงจากการนับคาร์บอนเครดิตซ้ำ โดยเฉพาะปัญหาความน่าเชื่อถือของข้อมูลก่อนเข้าสู่ระบบ (Pre-Blockchain Data Integrity) ซึ่งยังคงเป็นช่องว่างสำคัญของงานวิจัยที่ใช้เทคโนโลยีบล็อกเชนและแมชชีนเลิร์นนิง
-โครงงานวิจัยนี้มีวัตถุประสงค์เพื่อพัฒนาแพลตฟอร์มตลาดคาร์บอนเครดิตแบบกระจายศูนย์ โดยบูรณาการเทคโนโลยี Blockchain, Smart Contract, Machine Learning และ Decentralized Finance (DeFi) เข้าด้วยกัน ระบบนำเสนอแนวทางการตรวจสอบข้อมูลจากหลายแหล่ง (Multi-Source Validation) ร่วมกับ Blockchain Oracle เพื่อเพิ่มความน่าเชื่อถือของข้อมูลต้นทาง พร้อมออกแบบกลไก Staking และ Slashing เพื่อสร้างแรงจูงใจทางเศรษฐศาสตร์ให้ผู้พัฒนาโครงการส่งข้อมูลที่ถูกต้องและสามารถตรวจสอบได้ คาร์บอนเครดิตถูกแปลงให้อยู่ในรูปแบบโทเคนมาตรฐาน ERC-1155 สำหรับการซื้อขาย ขณะที่การ Retire เครดิตจะสร้างใบรับรองดิจิทัลในรูปแบบ ERC-721 NFT และจัดเก็บข้อมูลอ้างอิงบน IPFS
+โครงงานวิจัยนี้มีวัตถุประสงค์เพื่อพัฒนาแพลตฟอร์มตลาดคาร์บอนเครดิตแบบกระจายศูนย์ โดยบูรณาการเทคโนโลยี Blockchain, Smart Contract, แบบจำลองการประเมินความเสี่ยงถ่วงน้ำหนักจากหลายแหล่งข้อมูล (Multi-Source Weighted Risk Scoring) และ Decentralized Finance (DeFi) เข้าด้วยกัน ระบบนำเสนอแนวทางการตรวจสอบข้อมูลจากหลายแหล่ง (Multi-Source Validation) ร่วมกับ Blockchain Oracle เพื่อเพิ่มความน่าเชื่อถือของข้อมูลต้นทาง พร้อมออกแบบกลไก Staking และ Slashing เพื่อสร้างแรงจูงใจทางเศรษฐศาสตร์ให้ผู้พัฒนาโครงการส่งข้อมูลที่ถูกต้องและสามารถตรวจสอบได้ คาร์บอนเครดิตถูกแปลงให้อยู่ในรูปแบบโทเคนมาตรฐาน ERC-1155 สำหรับการซื้อขาย ขณะที่การ Retire เครดิตจะสร้างใบรับรองดิจิทัลในรูปแบบ ERC-721 NFT และจัดเก็บข้อมูลอ้างอิงบน IPFS
 ผลการพัฒนาระบบต้นแบบบนเครือข่าย Ethereum Sepolia Testnet แสดงให้เห็นว่าสามารถเชื่อมโยงกระบวนการตรวจสอบข้อมูล การออกคาร์บอนเครดิต และการซื้อขายบนบล็อกเชนได้อย่างเป็นระบบ ช่วยเพิ่มความโปร่งใส ลดความเสี่ยงจากข้อมูลที่ไม่น่าเชื่อถือ และสนับสนุนการพัฒนาตลาดคาร์บอนเครดิตที่มีประสิทธิภาพและน่าเชื่อถือมากยิ่งขึ้นในอนาคต
 Keywords: Blockchain, Carbon credit, Smart contract, Risk assessment, NDVI, ERC-1155, NFT, Decentralized marketplace
 1. Introduction
@@ -18,12 +18,14 @@ Keywords: Blockchain, Carbon credit, Smart contract, Risk assessment, NDVI, ERC-
 2.2 Decentralized Evidence and Data Validation 
 ความน่าเชื่อถือของตลาดคาร์บอนเครดิตขึ้นอยู่กับคุณภาพของข้อมูลและหลักฐานที่ใช้ประกอบการพิจารณาโครงการ งานวิจัย Implementation of Blockchain and IPFS to Safeguard Evidentiary Data [8] ได้นำเสนอการใช้ InterPlanetary File System (IPFS) เพื่อจัดเก็บหลักฐานดิจิทัลแบบกระจายศูนย์และสามารถตรวจสอบความถูกต้องของข้อมูลผ่าน Content Identifier (CID) ในด้านการตรวจสอบข้อมูล งานวิจัย Multi-Source Remote Sensing and GIS for Forest Carbon Monitoring Toward Carbon Neutrality [9] แสดงให้เห็นว่าการผสานข้อมูลจากหลายแหล่งสามารถเพิ่มความแม่นยำในการประเมินคาร์บอนได้ 
 ขณะที่งานวิจัย Carbon Sequestration from Remotely-Sensed NDVI and Net Ecosystem Exchange [10] และ Improving MODIS Land Cover Classification Using NDVI Time-Series and SVM [11] ยืนยันว่าข้อมูลจากดาวเทียมสามารถใช้ประเมินสภาพพื้นที่และศักยภาพการกักเก็บคาร์บอนได้อย่างมีประสิทธิภาพ นอกจากนี้ ข้อมูลภูมิอากาศจาก NASA POWER ยังได้รับการยืนยันความน่าเชื่อถือสำหรับการวิเคราะห์ข้อมูลระยะยาวในงานวิจัย [12] งานวิจัยเหล่านี้แสดงให้เห็นถึงศักยภาพของการใช้ข้อมูลจากหลายแหล่งเพื่อสนับสนุนการประเมินคาร์บอนเครดิต แต่ยังไม่ได้เชื่อมโยงข้อมูลดังกล่าวเข้ากับกลไกการออกเครดิตบนบล็อกเชนอย่างเป็นระบบ 
- 2.3 Carbon Credit Quality Assessment 
-การประเมินคุณภาพของคาร์บอนเครดิตเป็นองค์ประกอบสำคัญในการสร้างความเชื่อมั่นให้กับตลาด โดยเฉพาะประเด็นด้าน Additionality ความถูกต้องของข้อมูล และความเสี่ยงของโครงการ รายงาน Methodology for Assessing the Quality of Carbon Credits Version 3.0 [13] ได้เสนอกรอบการประเมินคุณภาพคาร์บอนเครดิตที่ครอบคลุมปัจจัยด้านความเสี่ยง ความน่าเชื่อถือของข้อมูล และผลกระทบต่อสิ่งแวดล้อม
-แนวทางดังกล่าวช่วยให้สามารถประเมินคุณภาพของคาร์บอนเครดิตได้อย่างเป็นระบบ และถูกนำมาใช้เป็นแนวทางอ้างอิงในการพัฒนามาตรฐานของตลาดคาร์บอนในหลายประเทศ อย่างไรก็ตาม กระบวนการประเมินส่วนใหญ่ยังอยู่ในรูปแบบของการตรวจสอบโดยผู้เชี่ยวชาญหรือหน่วยงานรับรอง และยังไม่ได้เชื่อมโยงผลการประเมินเข้ากับกลไกการออกคาร์บอนเครดิตหรือการกำหนดแรงจูงใจทางเศรษฐศาสตร์อย่างเป็นรูปธรรม
-ดังนั้น งานวิจัยนี้จึงนำแนวคิดด้านคุณภาพคาร์บอนเครดิตมาประยุกต์ใช้ร่วมกับแบบจำลอง Risk Scoring และ Trust Scoring เพื่อให้ผลการประเมินคุณภาพสามารถส่งผลโดยตรงต่อจำนวนเครดิตที่ได้รับการอนุมัติและระดับหลักประกันที่ผู้พัฒนาโครงการต้องวางในระบบ
+
+
+2.3 Carbon Credit Quality Assessment 
+การประเมินคุณภาพของคาร์บอนเครดิตเป็นองค์ประกอบสำคัญในการสร้างความเชื่อมั่นให้กับตลาด โดยเฉพาะประเด็นด้าน Additionality ความถูกต้องของการวัดปริมาณ และความถาวรของการลดการปล่อยก๊าซเรือนกระจก Cabiyo และ Field [13] ชี้ให้เห็นว่าความไม่แน่นอนในการประเมินคาร์บอนเครดิตเป็นคุณลักษณะที่มีอยู่โดยธรรมชาติ และตลาดจำเป็นต้องพัฒนากลไกที่รองรับความไม่แน่นอนดังกล่าวได้อย่างเป็นระบบ เช่น กลไกการประกันความเสี่ยงและการปรับปริมาณเครดิตย้อนหลัง 
+อย่างไรก็ตาม งานวิจัยดังกล่าวยังไม่ได้เชื่อมโยงผลการประเมินเข้ากับกลไกการออกเครดิตหรือแรงจูงใจทางเศรษฐกิจอย่างเป็นรูปธรรม 
+ดังนั้น งานวิจัยนี้จึงนำแนวคิดดังกล่าวมาประยุกต์ใช้ร่วมกับแบบจำลอง Risk Scoring และ Trust Scoringเพื่อให้ผลการประเมินคุณภาพส่งผลโดยตรงต่อจำนวนเครดิตที่ได้รับการอนุมัติและระดับหลักประกันที่ผู้พัฒนาโครงการต้องวางในระบบ Smart Contract บน Ethereum Blockchain นอกจากนี้ OECD (2025) ระบุว่าคุณภาพของคาร์บอนเครดิตขึ้นอยู่กับองค์ประกอบสำคัญ ได้แก่ Additionality, Permanence, Monitoring, Reporting and Verification (MRV), ความโปร่งใส และกลไกกำกับดูแลที่เหมาะสม เพื่อให้คาร์บอนเครดิตสะท้อนการลดหรือกักเก็บก๊าซเรือนกระจกที่เกิดขึ้นจริง [14] แนวคิดดังกล่าวสนับสนุนการพัฒนาแบบจำลอง Risk Scoring และ Trust Scoring ที่ใช้ในงานวิจัยนี้เพื่อประเมินความน่าเชื่อถือของโครงการคาร์บอนเครดิตอย่างเป็นระบบ.
 2.4 Decentralized Governance 
-การกำกับดูแลแบบกระจายศูนย์ (Decentralized Governance) เป็นองค์ประกอบสำคัญของระบบบล็อกเชนสมัยใหม่ โดยมีเป้าหมายเพื่อลดการพึ่งพาหน่วยงานกลาง เพิ่มความโปร่งใสในการตัดสินใจ และเปิดโอกาสให้ผู้มีส่วนได้ส่วนเสียมีส่วนร่วมในการกำหนดทิศทางของระบบ งานวิจัย Decentralized Autonomous Organization Framework for Business Operations [14] อธิบายว่า Decentralized Autonomous Organization (DAO) เป็นรูปแบบการกำกับดูแลที่อาศัย Smart Contract และกลไกการลงคะแนนเสียงบนบล็อกเชนในการดำเนินกระบวนการตัดสินใจแทนโครงสร้างการบริหารแบบรวมศูนย์ ซึ่งช่วยเพิ่มความโปร่งใสและความสามารถในการตรวจสอบย้อนหลังของกิจกรรมที่เกิดขึ้นภายในระบบ
+การกำกับดูแลแบบกระจายศูนย์ (Decentralized Governance) เป็นองค์ประกอบสำคัญของระบบบล็อกเชนสมัยใหม่ โดยมีเป้าหมายเพื่อลดการพึ่งพาหน่วยงานกลาง เพิ่มความโปร่งใสในการตัดสินใจ และเปิดโอกาสให้ผู้มีส่วนได้ส่วนเสียมีส่วนร่วมในการกำหนดทิศทางของระบบ งานวิจัย Decentralized Autonomous Organization Framework for Business Operations [15] อธิบายว่า Decentralized Autonomous Organization (DAO) เป็นรูปแบบการกำกับดูแลที่อาศัย Smart Contract และกลไกการลงคะแนนเสียงบนบล็อกเชนในการดำเนินกระบวนการตัดสินใจแทนโครงสร้างการบริหารแบบรวมศูนย์ ซึ่งช่วยเพิ่มความโปร่งใสและความสามารถในการตรวจสอบย้อนหลังของกิจกรรมที่เกิดขึ้นภายในระบบ
 นอกจากนี้ DAO ยังรองรับกระบวนการเสนอข้อเสนอ (Proposal Submission) การลงคะแนนเสียง (Voting) และการดำเนินการตามมติ (Automated Execution) ผ่านบล็อกเชน ทำให้ผู้มีส่วนเกี่ยวข้องสามารถตรวจสอบที่มาของการตัดสินใจได้อย่างโปร่งใสและลดความเสี่ยงจากการควบคุมโดยบุคคลหรือองค์กรเพียงรายเดียว
 อย่างไรก็ตาม งานวิจัยส่วนใหญ่ยังมุ่งเน้นการประยุกต์ใช้ DAO ในบริบทของการกำกับดูแลองค์กรและระบบการเงินแบบกระจายศูนย์ (DeFi) ขณะที่การประยุกต์ใช้ DAO สำหรับการกำกับดูแลตลาดคาร์บอนเครดิตยังได้รับการศึกษาอย่างจำกัด ดังนั้น งานวิจัยนี้จึงนำแนวคิด DAO มาประยุกต์ใช้เป็นกลไกการกำกับดูแลตลาดคาร์บอนเครดิตบนบล็อกเชน เพื่อสนับสนุนความโปร่งใส ความสามารถในการตรวจสอบย้อนหลัง และการมีส่วนร่วมของผู้มีส่วนได้ส่วนเสียในระยะยาว 3. Architecture and Methodology
 3.1 System Overview
@@ -32,8 +34,9 @@ Keywords: Blockchain, Carbon credit, Smart contract, Risk assessment, NDVI, ERC-
 ภายหลังการออกคาร์บอนเครดิต ผู้ใช้งานสามารถซื้อขายคาร์บอนเครดิตผ่านตลาดซื้อขายบนบล็อกเชน พร้อมทั้งใช้กลไกการวางหลักประกันและการลงโทษ (Staking and Slashing) เพื่อสร้างแรงจูงใจในการส่งข้อมูลที่ถูกต้อง เมื่อมีการนำคาร์บอนเครดิตไปชดเชยการปล่อยก๊าซเรือนกระจก ระบบจะดำเนินการยกเลิกเครดิต (Retirement) และออกใบรับรองดิจิทัลเพื่อใช้เป็นหลักฐานการชดเชยคาร์บอนที่สามารถตรวจสอบย้อนหลังได้ ขณะเดียวกัน การกำหนดนโยบายและพารามิเตอร์สำคัญของระบบจะถูกบริหารผ่านกลไก DAO เพื่อสนับสนุนความโปร่งใสและการมีส่วนร่วมของผู้มีส่วนได้ส่วนเสียในระยะยาว
  
 Figure 1. Carbon Credit Architecture
- 3.2 Smart Contract Architecture
+3.2 Smart Contract Architecture
 ระบบถูกพัฒนาบนเครือข่าย Ethereum โดยใช้ Smart Contract หลายชุดเพื่อแยกความรับผิดชอบของแต่ละองค์ประกอบอย่างชัดเจน คาร์บอนเครดิตถูกแทนด้วยโทเคนมาตรฐาน ERC-1155 ขณะที่ใบรับรองการชดเชยคาร์บอนถูกสร้างในรูปแบบ ERC-721 NFT นอกจากนี้ยังมี Utility Token สำหรับการวางหลักประกัน การชำระเงิน และการให้รางวัลภายในระบบ
+สำหรับการเชื่อมโยงข้อมูลภายนอก ระบบใช้แนวทาง Trusted Backend Oracle เพื่อรวบรวมและประมวลผลข้อมูลจากแหล่งข้อมูลภายนอกก่อนส่งผลลัพธ์เข้าสู่บล็อกเชน โดยสถาปัตยกรรมได้รับการออกแบบให้สามารถรองรับการเชื่อมต่อกับเครือข่าย Oracle แบบกระจายศูนย์ในอนาคตได้
 3.3 Multi-Source Confidence Assessment
 เพื่อยกระดับความน่าเชื่อถือของข้อมูลก่อนการออกคาร์บอนเครดิต งานวิจัยนี้นำเสนอกลไกการประเมินความน่าเชื่อถือจากหลายแหล่งข้อมูล โดยรวบรวมข้อมูลจากการสำรวจระยะไกล ข้อมูลจากหน่วยงานภายนอก ข้อมูลสภาพภูมิอากาศย้อนหลัง และข้อมูลที่ผู้พัฒนาโครงการรายงานเข้าสู่ระบบ จากนั้นนำมาคำนวณเป็นค่าความน่าเชื่อถือรวม (Confidence Score) ด้วยวิธี Weighted Linear Combination ดังสมการที่ (1)
 ■(&C_blend=0.30C_IoT+0.30C_gov+0.25C_hist+0.15C_user&&"(1)" ) 
@@ -62,7 +65,7 @@ Figure 1. Carbon Credit Architecture
 เพื่อให้ระบบสามารถพัฒนาและปรับปรุงได้อย่างต่อเนื่องโดยไม่ต้องพึ่งพาหน่วยงานกลาง งานวิจัยนี้นำแนวคิดการกำกับดูแลแบบกระจายศูนย์ (Decentralized Autonomous Organization: DAO) มาประยุกต์ใช้ในการบริหารจัดการแพลตฟอร์ม ผู้ถือ Governance Token สามารถมีส่วนร่วมในการเสนอและลงคะแนนเสียงเพื่อปรับเปลี่ยนพารามิเตอร์สำคัญของระบบผ่านกลไกการกำกับดูแลบนบล็อกเชน
 พารามิเตอร์ที่สามารถปรับเปลี่ยนได้ผ่าน DAO ได้แก่ อัตราค่าธรรมเนียมของแพลตฟอร์ม เกณฑ์การประเมินความเสี่ยง นโยบายการอนุมัติโครงการ ระดับหลักประกัน และการกำหนดสิทธิ์ของผู้ตรวจสอบโครงการ โดยข้อเสนอแต่ละรายการจะต้องผ่านกระบวนการเสนอ การลงคะแนน และการอนุมัติตามกฎเกณฑ์ที่กำหนดไว้ใน Smart Contract ก่อนที่จะมีผลบังคับใช้
 การใช้กลไก DAO ช่วยเพิ่มความโปร่งใสในการตัดสินใจ ลดการพึ่งพาผู้ดูแลระบบเพียงรายเดียว และเปิดโอกาสให้ผู้มีส่วนได้ส่วนเสียสามารถมีส่วนร่วมในการกำหนดทิศทางการพัฒนาของแพลตฟอร์มได้โดยตรง นอกจากนี้ การบันทึกกระบวนการกำกับดูแลทั้งหมดบนบล็อกเชนยังช่วยให้สามารถตรวจสอบย้อนหลังได้อย่างโปร่งใสและลดความเสี่ยงจากการเปลี่ยนแปลงกฎเกณฑ์โดยพลการ
- 4. Results and Discussion
+4. Results and Discussion
 4.1 System Deployment and Functional Validation
 สถาปัตยกรรมที่นำเสนอได้รับการพัฒนาและติดตั้งบนเครือข่าย Ethereum Sepolia Testnet ในรูปแบบระบบต้นแบบ (Prototype) ที่สามารถทำงานได้ครบถ้วนตลอดวงจรชีวิตของคาร์บอนเครดิต โดยระบบประกอบด้วย Smart Contract จำนวน 8 สัญญา ครอบคลุมการจัดการโครงการ การประเมินความเสี่ยง การออกคาร์บอนเครดิต การซื้อขาย การยกเลิกคาร์บอนเครดิต และการกำกับดูแลผ่าน DAO
 ผลการทดสอบการทำงานของระบบแสดงให้เห็นว่าผู้ใช้งานสามารถดำเนินการตามขั้นตอนหลักได้ครบถ้วน ตั้งแต่การยื่นโครงการ การประเมินความเสี่ยง การวางหลักประกัน การออกคาร์บอนเครดิตในรูปแบบ ERC-1155 การซื้อขายผ่าน Marketplace การยกเลิกคาร์บอนเครดิต และการสร้างใบรับรองดิจิทัลในรูปแบบ ERC-721 NFT โดยข้อมูลธุรกรรมทั้งหมดสามารถตรวจสอบย้อนหลังได้บนบล็อกเชน
@@ -74,27 +77,57 @@ Figure 1. Carbon Credit Architecture
 ผลการศึกษาชี้ให้เห็นว่าสถาปัตยกรรมที่นำเสนอสามารถเชื่อมโยงกระบวนการตรวจสอบข้อมูล (Trusted Measurement) เข้ากับกระบวนการซื้อขายและบริหารจัดการคาร์บอนเครดิตบนบล็อกเชน (Trusted Exchange) ได้ในสถาปัตยกรรมเดียว ซึ่งแตกต่างจากงานวิจัยส่วนใหญ่ที่มุ่งเน้นเพียงด้านใดด้านหนึ่ง
 นอกจากนี้ การนำแนวคิด Risk-Based Carbon Credit Issuance มาใช้ช่วยให้จำนวนคาร์บอนเครดิตที่ได้รับการอนุมัติสะท้อนระดับความน่าเชื่อถือของข้อมูลและความเสี่ยงของโครงการมากขึ้นขณะเดียวกัน กลไก Staking และ Slashing ยังช่วยเปลี่ยนความเสี่ยงด้านข้อมูลให้กลายเป็นต้นทุนทางเศรษฐศาสตร์ ทำให้ผู้พัฒนาโครงการมีแรงจูงใจในการส่งข้อมูลที่ถูกต้องและสามารถตรวจสอบได้ แม้ว่าระบบต้นแบบจะยังอยู่ในระดับการวิจัยและพัฒนาบนเครือข่ายทดสอบ แต่ผลลัพธ์ที่ได้แสดงให้เห็นถึงความเป็นไปได้ในการประยุกต์ใช้ Blockchain, Multi-Source Validation และ Cryptoeconomics ร่วมกันเพื่อยกระดับความน่าเชื่อถือของตลาดคาร์บอนเครดิตในอนาคต
 4.5 Limitations and Future Work
-งานวิจัยนี้ยังมีข้อจำกัดหลายประการ ได้แก่ การพึ่งพา Backend Oracle ในการดึงข้อมูลจากแหล่งภายนอก การทดสอบบนเครือข่าย Ethereum Sepolia Testnet และการใช้ข้อมูลดาวเทียมในระดับพื้นที่กว้างแทนข้อมูลระดับแปลงที่ดินจริง ในอนาคต สามารถต่อยอดงานวิจัยโดยเชื่อมต่อกับ Decentralized Oracle Network เช่น Chainlink การใช้ข้อมูลดาวเทียมความละเอียดสูงในระดับ Parcel-Level และการประเมินประสิทธิภาพของโมเดลด้วยข้อมูลจากโครงการคาร์บอนเครดิตจริงในหลายประเภท เพื่อยืนยันประสิทธิผลของกลไกการประเมินความเสี่ยงในเชิงปริมาณและเพิ่มความพร้อมสำหรับการใช้งานจริงในระดับอุตสาหกรรม
+งานวิจัยนี้ยังมีข้อจำกัดหลายประการ ได้แก่ การใช้รูปแบบ Trusted Backend Oracle แทน Decentralized Oracle Network เนื่องจาก Chainlink Functions บน Testnet สิ้นสุดการให้บริการในช่วงการพัฒนา ซึ่งส่งผลให้ผู้ดูแลระบบยังคงมีบทบาทในการส่งผลการประเมินขึ้นบล็อกเชน การทดสอบบนเครือข่าย Ethereum Sepolia Testnet และการใช้ข้อมูลดาวเทียมในระดับพื้นที่กว้างแทนข้อมูลระดับแปลงที่ดินจริง ในอนาคต สามารถต่อยอดงานวิจัยโดยเชื่อมต่อกับ Decentralized Oracle Network เช่น Chainlink การใช้ข้อมูลดาวเทียมความละเอียดสูงในระดับ Parcel-Level และการประเมินประสิทธิภาพของโมเดลด้วยข้อมูลจากโครงการคาร์บอนเครดิตจริงในหลายประเภท เพื่อยืนยันประสิทธิผลของกลไกการประเมินความเสี่ยงในเชิงปริมาณและเพิ่มความพร้อมสำหรับการใช้งานจริงในระดับอุตสาหกรรม
 5. CONCLUSION
 งานวิจัยนี้ได้นำเสนอการออกแบบและพัฒนาสถาปัตยกรรมตลาดคาร์บอนเครดิตบนบล็อกเชนที่ขับเคลื่อนด้วยการประเมินความเสี่ยง เพื่อแก้ไขข้อจำกัดของตลาดคาร์บอนเครดิตแบบดั้งเดิมด้านความโปร่งใส ความน่าเชื่อถือของข้อมูล และความสามารถในการตรวจสอบย้อนหลัง โดยบูรณาการการตรวจสอบข้อมูลจากหลายแหล่ง การประเมินความน่าเชื่อถือ การประเมินความเสี่ยง Blockchain Oracle และกลไก Cryptoeconomics ผ่าน Staking และ Slashing เข้าด้วยกันภายใต้สถาปัตยกรรมเดียว
 ระบบต้นแบบได้รับการพัฒนาและทดสอบบนเครือข่าย Ethereum Sepolia Testnet โดยสามารถรองรับกระบวนการสำคัญตลอดวงจรชีวิตของคาร์บอนเครดิต ตั้งแต่การยื่นโครงการ การประเมินความเสี่ยง การออกคาร์บอนเครดิต การซื้อขาย การยกเลิกคาร์บอนเครดิต และการออกใบรับรองดิจิทัลในรูปแบบ NFT 
 ผลการศึกษาแสดงให้เห็นว่าสถาปัตยกรรมที่นำเสนอสามารถเชื่อมโยงความน่าเชื่อถือของข้อมูลจากภายนอกเข้ากับกระบวนการออกคาร์บอนเครดิตบนบล็อกเชนได้อย่างเป็นระบบ ช่วยลดการพึ่งพาข้อมูลที่ผู้ใช้งานรายงานด้วยตนเอง เพิ่มความโปร่งใสในการตรวจสอบ และสร้างแรงจูงใจทางเศรษฐศาสตร์ให้ผู้เข้าร่วมระบบรับผิดชอบต่อคุณภาพของข้อมูลมากขึ้น
 องค์ความรู้สำคัญที่ได้จากงานวิจัยนี้คือแนวคิดการเชื่อมโยง Trusted Measurement และ Trusted Exchange ผ่านการประยุกต์ใช้ Multi-Source Validation และ Risk-Based Issuance บนบล็อกเชน ซึ่งสามารถใช้เป็นแนวทางในการพัฒนาระบบคาร์บอนเครดิตที่มีความน่าเชื่อถือสูง และสนับสนุนการพัฒนาตลาดคาร์บอนเครดิตในอนาคต
- References
-[1] E. Laoli and A. Alamsyah, “Blockchain-Based Carbon Credit Tokenization Model: Enhancing Market Transparency and Trust,” in Proceedings of the IEEE Conference, 2025, Art. no. 10933427.
+References
+[1] E. Laoli and A. Alamsyah, “Blockchain-Based Carbon Credit Tokenization Model: Enhancing Market Transparency and Trust,” in Proceedings of the IEEE Conference, 2025, Art. no. 10933427. 
+doi:https://doi.org/10.1109/ICADEIS65852.2025.10933427 
+
 [2] V. Chavan et al., “CarboNexFarm: A MERN and ML-Based Carbon Credit Trading Platform for Sustainable Agriculture and Carbon Offset Management,” in Proceedings of the IEEE Conference, 2024, Art. no. 11118496.
+doi:https://doi.org/10.1109/ICOCT64433.2025.11118496 
+
 [3] T. P. Abiodun, N. I. Nwulu, and P. O. Olukanmi, “Application of Blockchain Technology in Carbon Trading Market: A Systematic Review,” IEEE Access, vol. 13, pp. 1–24, 2025.
+doi:https://doi.org/10.1109/ACCESS.2024.3523672 
+
 [4] “Blockchain Powered Carbon Credit Marketplace,” in Proceedings of the International Conference on Communication, Computing and Systems Processing (ICCSP), IEEE, 2024, Art. no. 10543794.
+doi:https://doi.org/10.1109/ICCSP60870.2024.10543794 
+
 [5] E. Laoli and A. Alamsyah, “Blockchain-Based Carbon Credit Tokenization Model: Enhancing Market Transparency and Trust,” 2025, Art. no. 10933427.
+doi:https://doi.org/10.1109/ICADEIS65852.2025.10933427  
+
 [6] “Decentralized Framework for Transparent Carbon Credit Verification and Exchange,” 2025, Art. no. 11518336.
+doi:https://doi.org/10.1109/ICNWC68145.2026.11518336 
+
 [7] A. Alharbi, M. Alzahrani, and A. Almutairi, “Harnessing Web3 on Carbon Offset Market for Sustainability,” arXiv preprint arXiv:2308.02039, 2023.
+doi:https://doi.org/10.1109/MWC.010.2300038 
+
 [8] “Implementation of Blockchain and IPFS to Safeguard Evidentiary Data,” 2024, Art. no. 10616708.
-[9] “Multi-Source Remote Sensing and GIS for Forest Carbon Monitoring Toward Carbon Neutrality,” ResearchGate Preprint, 2025.
+doi:https://doi.org/10.1109/ICKECS61492.2024.10616708 
+
+[9] “Multi-Source Remote Sensing and GIS for Forest Carbon Monitoring Toward Carbon Neutrality,” ResearchGate Preprint, 2025.  doi:https://doi.org/10.3390/f16060971?urlappend=%3Futm_source%3Dresearchgate.net%26utm_medium%3Darticle 
+
 [10] D. Sims, R. Rahman, and J. Cordova, “Carbon Sequestration from Remotely-Sensed NDVI and Net Ecosystem Exchange,” Remote Sensing and Carbon Dynamics Research.
+doi:https://doi.org/10.1007/978-94-017-1620-8_8
+
 [11] A. Schneider, M. A. Friedl, and D. Potere, “Improving MODIS Land Cover Classification Using NDVI Time-Series and Support Vector Machines,” Remote Sensing of Environment, vol. 114, no. 11, pp. 2710–2723, 2010.
+doi:https://doi.org/10.1109/WICOM.2010.5601047 
+
 [12] “Evaluation of NASA POWER and ERA5 for Estimating Solar Radiation,” 2025, Art. no. 10942006.
-[13] WWF, Environmental Defense Fund (EDF), and Oeko-Institut, Methodology for Assessing the Quality of Carbon Credits Version 3.0. Berlin, Germany: Oeko-Institut, 2023.
-[14] H. Hasan and M. Salah, “Blockchain and the Emergence of DAOs: An Integrative Model and Research Agenda,” Information Systems Frontiers, vol. 24, no. 4, pp. 1205–1225, 2022.
+doi:https://doi.org/10.1109/BTS-I2C63534.2024.10942006
+
+[13] Cabiyo, B. & Field, C.B. (2025). Embracing imperfection: Carbon offset markets must learn to mitigate the risk of over-crediting. PNAS Nexus, 4(5), pgaf091.
+doi:https://doi.org/10.1093/pnasnexus/pgaf091
+
+[14] K. Wetterberg, E. Lanzi, and N. Gómez, Exploring Governments’ Efforts to Shape Carbon Credit Markets: Possible Actions to Enhance Integrity, OECD Environment Working Papers No. 263, OECD Publishing, 2025.
+doi:https://doi.org/10.1787/0bafe9af-en
+
+[15] H. Hasan and M. Salah, “Blockchain and the Emergence of DAOs: An Integrative Model and Research Agenda,” Information Systems Frontiers, vol. 24, no. 4, pp. 1205–1225, 2022.
+doi:https://doi.org/10.1109/IAICT65714.2025.11101423 
+
 
 แปะลิงค์
 [1] https://ieeexplore.ieee.org/document/10933427
@@ -103,12 +136,13 @@ Figure 1. Carbon Credit Architecture
 [4] https://ieeexplore.ieee.org/document/10543794
 [5] https://ieeexplore.ieee.org/document/10933427
 [6] https://ieeexplore.ieee.org/document/11518336
-[7] https://arxiv.org/pdf/2308.02039
+[7] https://ieeexplore.ieee.org/document/10325364
 [8] https://ieeexplore.ieee.org/document/10616708
 [9] https://www.researchgate.net/publication/392539195
 [10] https://www.researchgate.net/publication/300762347
 [11] https://ieeexplore.ieee.org/document/5601047
 [12] https://ieeexplore.ieee.org/document/10942006
-[13] https://www.researchgate.net/publication/366946581
-[14] https://ieeexplore.ieee.org/document/11101423 
+[13] https://www.researchgate.net/publication/389878657_Embracing_imperfection_Carbon_offset_markets_must_learn_to_mitigate_the_risk_of_overcrediting 
+[14] https://www.oecd.org/en/publications/exploring-governments-efforts-to-shape-carbon-credit-markets_0bafe9af-en.html 
+[15] https://ieeexplore.ieee.org/document/11101423 
 

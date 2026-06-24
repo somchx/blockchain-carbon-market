@@ -1,0 +1,27 @@
+[
+  {
+    "label": "Community Treasury",
+    "address": "0xF07cc7DfEa269C8Ea36ed63538503A5b7f4484D8",
+    "amount": "400000"
+  },
+  {
+    "label": "Verifier Incentive Pool",
+    "address": "0xF07cc7DfEa269C8Ea36ed63538503A5b7f4484D8",
+    "amount": "200000"
+  },
+  {
+    "label": "Ecosystem Grants",
+    "address": "0xF07cc7DfEa269C8Ea36ed63538503A5b7f4484D8",
+    "amount": "150000"
+  },
+  {
+    "label": "Core Contributors",
+    "address": "0xF07cc7DfEa269C8Ea36ed63538503A5b7f4484D8",
+    "amount": "150000"
+  },
+  {
+    "label": "Public Governance Access",
+    "address": "0xF07cc7DfEa269C8Ea36ed63538503A5b7f4484D8",
+    "amount": "100000"
+  }
+]
