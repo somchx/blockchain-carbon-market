@@ -61,13 +61,6 @@ const tools = [
     color: "border-purple-200 hover:border-purple-400 hover:bg-purple-50/40",
   },
   {
-    to: "/oracle",
-    icon: "🌤️",
-    title: "Chainlink Oracle",
-    description: "ข้อมูล NASA POWER (solar + precipitation) ถูกดึงผ่าน Chainlink Functions architecture และ store บน chain",
-    color: "border-amber-200 hover:border-amber-400 hover:bg-amber-50/40",
-  },
-  {
     to: "/admin",
     icon: "📊",
     title: "Admin Dashboard",
@@ -207,7 +200,7 @@ export default function RoleSelect() {
         <section>
           <div className="mb-5">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">เครื่องมือประกอบ</p>
-            <h2 className="mt-1.5 text-xl font-bold text-gray-900">Explorer · DAO · Oracle · Admin</h2>
+            <h2 className="mt-1.5 text-xl font-bold text-gray-900">Explorer · DAO · Admin</h2>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -266,7 +259,6 @@ export default function RoleSelect() {
             {[
               ["Market", "0x604058…4e4b"],
               ["GovDAO", "0x7F208C…79Db"],
-              ["Oracle", "0xaa6D37…2c6"],
             ].map(([label, addr]) => (
               <span key={label} className="font-mono">
                 <span className="text-gray-500 font-sans font-medium mr-1">{label}</span>{addr}

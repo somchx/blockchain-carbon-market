@@ -508,7 +508,6 @@ export default function ManualPage() {
             {[
               { to: "/explorer", icon: "🔭", title: "Traceability Explorer", body: "ค้นหาโครงการ แล้วดูว่า Credit นั้นผ่านขั้นตอนอะไรมาบ้าง มี tx hash พิสูจน์ได้ทุกก้าว", color: "sky" },
               { to: "/dao", icon: "🏛️", title: "DAO Governance", body: "โหวตเปลี่ยนกฎของระบบ เช่น ใครเป็น Verifier หรือค่าธรรมเนียมเท่าไหร่ ใช้ CGOV token", color: "violet" },
-              { to: "/oracle", icon: "🌤️", title: "Oracle — NASA Data", body: "ดูข้อมูล climate จาก NASA POWER ที่ระบบใช้คำนวณ Risk Score ของแต่ละโครงการ", color: "amber" },
               { to: "/admin", icon: "📊", title: "Admin Dashboard", body: "ภาพรวมระบบ — จำนวนโครงการ, สถิติ risk, leaderboard ผู้ตรวจสอบ และสถานะ DAO", color: "gray" },
             ].map(t => (
               <Link

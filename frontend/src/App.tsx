@@ -6,7 +6,6 @@ import BuyerMarketplace from "./pages/buyer/Marketplace";
 import TraceabilityExplorer from "./pages/explorer/Traceability";
 import GovernancePortal from "./pages/dao/GovernancePortal";
 import AdminDashboard from "./pages/admin/Dashboard";
-import OracleStatus from "./pages/oracle/OracleStatus";
 import ManualPage from "./pages/ManualPage";
 
 export default function App() {
@@ -19,7 +18,6 @@ export default function App() {
       <Route path="/explorer" element={<TraceabilityExplorer />} />
       <Route path="/dao" element={<GovernancePortal />} />
       <Route path="/admin" element={<AdminDashboard />} />
-      <Route path="/oracle" element={<OracleStatus />} />
       <Route path="/manual" element={<ManualPage />} />
     </Routes>
   );

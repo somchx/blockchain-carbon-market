@@ -1,5 +1,5 @@
 import { BrowserProvider, Contract, formatUnits } from "ethers";
-import { carbonCreditAbi, carbonMarketAbi, cgovSaleAbi, erc20Abi, governanceTokenAbi, governorAbi, retireCertificateAbi, riskOracleAbi, tcutSaleAbi } from "./contracts";
+import { carbonCreditAbi, carbonMarketAbi, cgovSaleAbi, erc20Abi, governanceTokenAbi, governorAbi, retireCertificateAbi, tcutSaleAbi } from "./contracts";
 
 type InjectedProvider = {
   request: (args: { method: string; params?: unknown[] | Record<string, unknown> }) => Promise<unknown>;
@@ -26,7 +26,6 @@ export type ContractConfig = {
   retireCertificateAddress?: string;
   governanceTokenAddress?: string;
   governorAddress?: string;
-  oracleAddress?: string;
   tcutSaleAddress?: string;
   cgovSaleAddress?: string;
 };
@@ -57,7 +56,6 @@ export function getContractConfig(): ContractConfig {
     retireCertificateAddress: trimAddr(import.meta.env.VITE_RETIRE_CERTIFICATE_ADDRESS),
     governanceTokenAddress: trimAddr(import.meta.env.VITE_GOVERNANCE_TOKEN_ADDRESS),
     governorAddress: trimAddr(import.meta.env.VITE_GOVERNOR_ADDRESS),
-    oracleAddress: trimAddr(import.meta.env.VITE_ORACLE_ADDRESS),
     tcutSaleAddress: trimAddr(import.meta.env.VITE_TCUT_SALE_ADDRESS),
     cgovSaleAddress: trimAddr(import.meta.env.VITE_CGOV_SALE_ADDRESS),
   };
@@ -156,8 +154,6 @@ export async function getContracts(provider: BrowserProvider) {
   const retireCertificateAddress = requireAddress(config.retireCertificateAddress, "VITE_RETIRE_CERTIFICATE_ADDRESS");
   const governanceTokenAddress = requireAddress(config.governanceTokenAddress, "VITE_GOVERNANCE_TOKEN_ADDRESS");
   const governorAddress = requireAddress(config.governorAddress, "VITE_GOVERNOR_ADDRESS");
-  const oracleAddress = requireAddress(config.oracleAddress, "VITE_ORACLE_ADDRESS");
-
   return {
     config,
     market: new Contract(marketAddress, carbonMarketAbi, signer),
@@ -166,7 +162,6 @@ export async function getContracts(provider: BrowserProvider) {
     retireCertificate: new Contract(retireCertificateAddress, retireCertificateAbi, signer),
     govToken: new Contract(governanceTokenAddress, governanceTokenAbi, signer),
     governor: new Contract(governorAddress, governorAbi, signer),
-    oracle: new Contract(oracleAddress, riskOracleAbi, signer)
   };
 }
 
