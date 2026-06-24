@@ -1,6 +1,7 @@
-import { formatUnits, Interface, id as ethersId, parseEther } from "ethers";
+import { Contract, formatUnits, Interface, id as ethersId, JsonRpcProvider, parseEther } from "ethers";
 import { useEffect, useState } from "react";
 import WalletBar from "../../components/WalletBar";
+import { governanceTokenAbi } from "../../lib/contracts";
 import { getCGOVSaleContract, getConnectedWallet, getContractConfig, getContracts, readCGOVSaleInfo, type WalletState } from "../../lib/web3";
 
 const config = getContractConfig();
@@ -205,6 +206,10 @@ export default function GovernancePortal() {
   const [ethBuyInput, setEthBuyInput] = useState("");
   const [delegateTarget, setDelegateTarget] = useState("");
 
+  type HolderInfo = { address: string; balance: bigint };
+  const [holders, setHolders] = useState<HolderInfo[]>([]);
+  const [holdersLoading, setHoldersLoading] = useState(false);
+
   const selectedOption = PROPOSAL_OPTIONS.find((option) => option.type === propType) ?? PROPOSAL_OPTIONS[0];
 
   async function loadData() {
@@ -314,8 +319,58 @@ export default function GovernancePortal() {
     }
   }
 
+  async function loadHolders() {
+    if (!config.governanceTokenAddress) return;
+    setHoldersLoading(true);
+    try {
+      const rpcUrl = import.meta.env.VITE_CHAIN_RPC_URL ?? "https://sepolia.gateway.tenderly.co";
+      const provider = new JsonRpcProvider(rpcUrl);
+      const govToken = new Contract(config.governanceTokenAddress, governanceTokenAbi, provider);
+      const iface = new Interface(["event Transfer(address indexed from, address indexed to, uint256 value)"]);
+      const transferTopic = iface.getEvent("Transfer")!.topicHash;
+
+      const latest = await provider.getBlockNumber();
+      const fromBlock = Math.max(0, latest - 500_000);
+      const chunkSize = 49_999;
+      const uniqueAddrs = new Set<string>();
+
+      for (let start = fromBlock; start <= latest; start += chunkSize) {
+        const end = Math.min(start + chunkSize - 1, latest);
+        try {
+          const logs = await provider.getLogs({
+            address: config.governanceTokenAddress,
+            topics: [transferTopic],
+            fromBlock: start,
+            toBlock: end,
+          });
+          for (const log of logs) {
+            const parsed = iface.parseLog({ topics: [...log.topics], data: log.data });
+            if (!parsed) continue;
+            const to = parsed.args[1] as string;
+            if (to !== "0x0000000000000000000000000000000000000000") {
+              uniqueAddrs.add(to.toLowerCase());
+            }
+          }
+        } catch { /* skip chunk */ }
+      }
+
+      const results: HolderInfo[] = [];
+      for (const addr of uniqueAddrs) {
+        try {
+          const bal: bigint = await govToken.balanceOf(addr);
+          if (bal > 0n) results.push({ address: addr, balance: bal });
+        } catch { /* skip */ }
+      }
+      results.sort((a, b) => (b.balance > a.balance ? 1 : -1));
+      setHolders(results);
+    } catch { /* ignore */ } finally {
+      setHoldersLoading(false);
+    }
+  }
+
   useEffect(() => {
     void loadData();
+    void loadHolders();
   }, []);
 
   async function runAction(key: string, task: () => Promise<void>) {
@@ -474,6 +529,93 @@ export default function GovernancePortal() {
             <p className="text-lg font-medium">Connect MetaMask เพื่อใช้งาน DAO</p>
           </div>
         )}
+
+        {/* ── Token Holders Dashboard ─── แสดงก่อน connect wallet ก็ได้ */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">CGOV Token Holders</h2>
+              <p className="text-xs text-gray-400 mt-0.5">ผู้ถือหุ้นที่มีสิทธิ์ร่วม governance</p>
+            </div>
+            <button
+              onClick={() => void loadHolders()}
+              disabled={holdersLoading}
+              className="text-xs text-gray-400 hover:text-gray-600 disabled:opacity-40 border border-gray-200 rounded-lg px-3 py-1.5"
+            >
+              {holdersLoading ? "กำลังโหลด..." : "🔄 Refresh"}
+            </button>
+          </div>
+
+          {holdersLoading && holders.length === 0 ? (
+            <p className="text-sm text-gray-400 py-4 text-center">กำลังดึงข้อมูล Transfer events จาก chain...</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                <div className="bg-purple-50 rounded-xl p-3 text-center">
+                  <p className="text-xs text-purple-500 mb-1">จำนวน Holders</p>
+                  <p className="text-2xl font-bold text-purple-900">{holders.length}</p>
+                  <p className="text-xs text-purple-400">accounts</p>
+                </div>
+                <div className="bg-indigo-50 rounded-xl p-3 text-center">
+                  <p className="text-xs text-indigo-500 mb-1">ถือมากสุด</p>
+                  <p className="text-lg font-bold text-indigo-900 truncate">
+                    {holders[0] ? Number(formatUnits(holders[0].balance, 18)).toLocaleString() : "—"}
+                  </p>
+                  <p className="text-xs text-indigo-400 font-mono truncate">
+                    {holders[0] ? `${holders[0].address.slice(0, 6)}...${holders[0].address.slice(-4)}` : "—"}
+                  </p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3 text-center col-span-2 sm:col-span-1">
+                  <p className="text-xs text-gray-500 mb-1">Total Circulating</p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {holders.length > 0
+                      ? Number(formatUnits(holders.reduce((s, h) => s + h.balance, 0n), 18)).toLocaleString()
+                      : "—"}
+                  </p>
+                  <p className="text-xs text-gray-400">CGOV</p>
+                </div>
+              </div>
+
+              {holders.length > 0 && (
+                <div className="rounded-xl border border-gray-100 overflow-hidden">
+                  <table className="min-w-full text-xs">
+                    <thead className="bg-gray-50 text-gray-500">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-semibold">#</th>
+                        <th className="px-3 py-2 text-left font-semibold">Address</th>
+                        <th className="px-3 py-2 text-right font-semibold">CGOV</th>
+                        <th className="px-3 py-2 text-right font-semibold">สัดส่วน</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {holders.slice(0, 10).map((h, i) => {
+                        const total = holders.reduce((s, x) => s + x.balance, 0n);
+                        const pct = total > 0n ? Number((h.balance * 10000n) / total) / 100 : 0;
+                        const isMe = wallet?.account.toLowerCase() === h.address;
+                        return (
+                          <tr key={h.address} className={isMe ? "bg-purple-50" : "hover:bg-gray-50"}>
+                            <td className="px-3 py-2 text-gray-400">{i + 1}</td>
+                            <td className="px-3 py-2 font-mono text-gray-700">
+                              {h.address.slice(0, 8)}...{h.address.slice(-4)}
+                              {isMe && <span className="ml-1.5 text-purple-600 font-semibold">← คุณ</span>}
+                            </td>
+                            <td className="px-3 py-2 text-right font-semibold text-gray-900">
+                              {Number(formatUnits(h.balance, 18)).toLocaleString()}
+                            </td>
+                            <td className="px-3 py-2 text-right text-gray-500">{pct.toFixed(1)}%</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  {holders.length > 10 && (
+                    <p className="text-xs text-gray-400 text-center py-2">แสดง 10 อันดับแรก จากทั้งหมด {holders.length} holders</p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
         {wallet && (
           <>
