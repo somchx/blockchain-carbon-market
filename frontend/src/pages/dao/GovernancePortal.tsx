@@ -133,6 +133,41 @@ const PROPOSAL_OPTIONS: Array<{
   },
 ];
 
+const CALLDATA_META: Record<string, { label: string; format: (val: bigint) => string }> = {
+  setReviewerBond:                      { label: "เปลี่ยน Reviewer Bond",               format: v => `${Number(formatUnits(v, 18)).toLocaleString()} TCUT` },
+  setChallengeDuration:                 { label: "เปลี่ยน Challenge Duration",           format: v => `${Number(v).toLocaleString()} วินาที` },
+  setVoteThreshold:                     { label: "เปลี่ยน Vote Threshold",               format: v => `${Number(v)} เสียง` },
+  setChallengerPenaltyBps:              { label: "เปลี่ยน Failed Challenge Penalty",     format: v => `${Number(v)} bps` },
+  setChallengerRewardReputation:        { label: "เปลี่ยน Reputation Reward",            format: v => `${Number(v)} คะแนน` },
+  setChallengerPenaltyReputation:       { label: "เปลี่ยน Reputation Penalty",           format: v => `${Number(v)} คะแนน` },
+  setPlatformFeeBps:                    { label: "เปลี่ยน Marketplace Fee",              format: v => `${Number(v)} bps` },
+  setMinimumVerifierReputationToApprove:{ label: "เปลี่ยน Min Verifier Reputation",      format: v => `${Number(v)} คะแนน` },
+};
+
+const SETTER_IFACE = new Interface([
+  "function setReviewerBond(uint256)",
+  "function setChallengeDuration(uint256)",
+  "function setVoteThreshold(uint256)",
+  "function setChallengerPenaltyBps(uint256)",
+  "function setChallengerRewardReputation(uint256)",
+  "function setChallengerPenaltyReputation(uint256)",
+  "function setPlatformFeeBps(uint256)",
+  "function setMinimumVerifierReputationToApprove(uint256)",
+]);
+
+function decodeProposalAction(calldatas: string[]): { label: string; newValue: string } | null {
+  if (!calldatas?.length) return null;
+  try {
+    const parsed = SETTER_IFACE.parseTransaction({ data: calldatas[0] });
+    if (!parsed) return null;
+    const meta = CALLDATA_META[parsed.name];
+    if (!meta) return null;
+    return { label: meta.label, newValue: meta.format(parsed.args[0] as bigint) };
+  } catch {
+    return null;
+  }
+}
+
 function formatSeconds(seconds: bigint) {
   const total = Number(seconds);
   const days = Math.floor(total / 86400);
@@ -677,13 +712,24 @@ export default function GovernancePortal() {
                   const forPct = total > 0n ? Number((proposal.forVotes * 100n) / total) : 0;
                   const againstPct = total > 0n ? Number((proposal.againstVotes * 100n) / total) : 0;
                   const explorerUrl = config.explorerBaseUrl ? `${config.explorerBaseUrl}/address/${config.governorAddress}` : null;
+                  const action = decodeProposalAction(proposal.calldatas);
 
                   return (
                     <div key={proposal.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1 pr-4">
                           <p className="font-semibold text-gray-900 leading-snug">{proposal.description}</p>
-                          <p className="text-xs text-gray-400 mt-1 font-mono">
+                          {action && (
+                            <div className="mt-1.5 flex flex-wrap gap-2">
+                              <span className="text-xs bg-indigo-50 border border-indigo-200 text-indigo-700 px-2 py-0.5 rounded-full font-medium">
+                                {action.label}
+                              </span>
+                              <span className="text-xs bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
+                                ค่าใหม่: {action.newValue}
+                              </span>
+                            </div>
+                          )}
+                          <p className="text-xs text-gray-400 mt-1.5 font-mono">
                             by {proposal.proposer.slice(0, 8)}... · Blocks {proposal.voteStart}–{proposal.voteEnd}
                           </p>
                         </div>
