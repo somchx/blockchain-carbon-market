@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import WalletBar from "../../components/WalletBar";
 import { governanceTokenAbi } from "../../lib/contracts";
 import { getCGOVSaleContract, getConnectedWallet, getContractConfig, getContracts, readCGOVSaleInfo, type WalletState } from "../../lib/web3";
+import { erc20Abi } from "../../lib/contracts";  // for bond approval
 
 const config = getContractConfig();
 
@@ -205,6 +206,8 @@ export default function GovernancePortal() {
   const [cgovRate, setCgovRate] = useState(10_000n);
   const [ethBuyInput, setEthBuyInput] = useState("");
   const [delegateTarget, setDelegateTarget] = useState("");
+  const [governorOwner, setGovernorOwner] = useState<string | null>(null);
+  const [proposalBondAmount, setProposalBondAmount] = useState(500n * 10n ** 18n);
 
   type HolderInfo = { address: string; balance: bigint };
   const [holders, setHolders] = useState<HolderInfo[]>([]);
@@ -227,12 +230,19 @@ export default function GovernancePortal() {
         rawVotes,
         rawDelegatee,
         rawProposalThreshold,
+        rawGovernorOwner,
+        rawProposalBond,
       ] = await Promise.all([
         govToken.balanceOf(w.account),
         govToken.getVotes(w.account),
         govToken.delegates(w.account),
         governor.proposalThreshold(),
+        (governor as any).owner().catch(() => null),
+        (governor as any).proposalBond().catch(() => 500n * 10n ** 18n),
       ]);
+
+      setGovernorOwner(rawGovernorOwner as string | null);
+      setProposalBondAmount(rawProposalBond as bigint);
 
       setGovBalance(Number(formatUnits(rawBal, 18)).toLocaleString());
       setVotingPower(Number(formatUnits(rawVotes, 18)).toLocaleString());
@@ -471,10 +481,26 @@ export default function GovernancePortal() {
     if (!wallet || !propParam || !propDesc) throw new Error("กรอกข้อมูลให้ครบ");
     if (legacyContractWarning) throw new Error("Current market contract is still legacy. Redeploy CarbonMarket before creating governance proposals with the new parameters.");
     const { governor } = await getContracts(wallet.provider);
+    const signer = await wallet.provider.getSigner();
+    const governorAddr = config.governorAddress;
+    const govTokenAddr = config.governanceTokenAddress;
+
+    // Auto-approve proposal bond if needed
+    if (proposalBondAmount > 0n && govTokenAddr && governorAddr) {
+      const tokenContract = new Contract(govTokenAddr, erc20Abi, signer);
+      const allowance: bigint = await tokenContract.allowance(wallet.account, governorAddr);
+      if (allowance < proposalBondAmount) {
+        const approveTx = await tokenContract.approve(governorAddr, proposalBondAmount);
+        await (approveTx as any).wait();
+        setTxMsg("✅ Approved CGOV bond — กำลังสร้าง Proposal...");
+      }
+    }
+
     const { targets, values, calldatas } = buildCalldata(propType, propParam);
     const tx = await governor.propose(targets, values, calldatas, propDesc);
     await (tx as any).wait();
-    setTxMsg("✅ Proposal created! รอ 1 block แล้ว voting จะ Active");
+    const bondDisplay = Number(formatUnits(proposalBondAmount, 18)).toLocaleString();
+    setTxMsg(`✅ Proposal created! วาง bond ${bondDisplay} CGOV แล้ว รอ 1 block แล้ว voting จะ Active`);
     setPropParam("");
     setPropDesc("");
   }
@@ -497,10 +523,29 @@ export default function GovernancePortal() {
     setTxMsg("✅ Proposal executed! Changes applied on-chain.");
   }
 
+  async function demoExecuteProposal(proposal: Proposal) {
+    if (!wallet) return;
+    const { governor } = await getContracts(wallet.provider);
+    const descHash = ethersId(proposal.description);
+    const tx = await (governor as any).demoExecute([...proposal.targets], [...proposal.values], [...proposal.calldatas], descHash);
+    await (tx as any).wait();
+    setTxMsg("✅ [Demo] Proposal ถูก Execute แล้ว bond ถูกคืนให้ผู้เสนอ");
+  }
+
+  async function demoDefeatProposal(proposal: Proposal) {
+    if (!wallet) return;
+    const { governor } = await getContracts(wallet.provider);
+    const tx = await (governor as any).demoDefeat(BigInt(proposal.id));
+    await (tx as any).wait();
+    setTxMsg("❌ [Demo] Proposal ถูก Defeat แล้ว bond ถูก Slash ไปที่ treasury");
+  }
+
   const selfDelegated = delegatee?.toLowerCase() === wallet?.account.toLowerCase();
   const hasVotingPower = parseFloat(votingPower.replace(/,/g, "")) > 0;
   const hasProposalThreshold = parseFloat(votingPower.replace(/,/g, "")) >= parseFloat(proposalThreshold.replace(/,/g, ""));
   const previewText = propParam ? selectedOption.describe(propParam) : "กรอกค่าใหม่เพื่อดูผลกระทบของ proposal นี้";
+  const isOwner = governorOwner && wallet?.account.toLowerCase() === governorOwner.toLowerCase();
+  const bondDisplay = Number(formatUnits(proposalBondAmount, 18)).toLocaleString();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -642,7 +687,7 @@ export default function GovernancePortal() {
                       onClick={() => void runAction("faucet", claimCGOVFaucet)}
                       className="w-full py-2 rounded-xl bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 disabled:opacity-40 transition-colors mb-2"
                     >
-                      {actionKey === "faucet" ? "กำลังรับ..." : "🎁 รับ 500 CGOV ฟรี สำหรับทดสอบระบบ"}
+                      {actionKey === "faucet" ? "กำลังรับ..." : `🎁 รับ ${cgovFaucetAmount} CGOV ฟรี สำหรับทดสอบระบบ`}
                     </button>
                   )}
                   <button
@@ -819,12 +864,16 @@ export default function GovernancePortal() {
                   />
                 </div>
 
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+                  <span className="font-semibold">⚠️ Proposal Bond: {bondDisplay} CGOV</span>
+                  <span className="ml-2 text-amber-600">จะถูกหักอัตโนมัติเมื่อ submit — คืนหาก Passed, ถูก Slash หาก Defeated</span>
+                </div>
                 <button
                   disabled={!!actionKey || !propParam || !propDesc || !selfDelegated || !hasProposalThreshold || !!legacyContractWarning}
                   onClick={() => void runAction("propose", createProposal)}
                   className="w-full py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-40 transition-colors"
                 >
-                  {actionKey === "propose" ? "Creating..." : "📋 Create Proposal"}
+                  {actionKey === "propose" ? "Creating..." : `📋 Create Proposal (วาง Bond ${bondDisplay} CGOV)`}
                 </button>
                 {!selfDelegated && (
                   <p className="text-xs text-gray-400 text-center">ต้อง Delegate votes ก่อนถึงจะ propose ได้</p>
@@ -880,6 +929,21 @@ export default function GovernancePortal() {
                         </span>
                       </div>
 
+                      {/* Voting Rules Info */}
+                      <div className="mb-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs text-gray-500 leading-5">
+                        <span className="font-semibold text-gray-700">กติกาการโหวต: </span>
+                        ต้องได้ &gt; 50% For จากทั้งหมดที่โหวต · ต้องถึง quorum 4% ·{" "}
+                        <span className="text-amber-600 font-medium">bond {bondDisplay} CGOV</span>{" "}
+                        {proposal.state === 3 || proposal.state === 7
+                          ? proposal.state === 7
+                            ? "→ คืนแล้ว ✅"
+                            : "→ ถูก Slash ❌"
+                          : "ถูกวางไว้ (คืนถ้า Passed / Slash ถ้า Defeated)"}
+                        {" · "}โหวตแล้ว {holders.length > 0
+                          ? `${(Number(formatUnits(proposal.forVotes + proposal.againstVotes, 18))).toLocaleString(undefined, { maximumFractionDigits: 0 })}/${holders.length} holders`
+                          : `${Number(formatUnits(proposal.forVotes + proposal.againstVotes, 18)).toLocaleString(undefined, { maximumFractionDigits: 0 })} CGOV`}
+                      </div>
+
                       <div className="mb-3">
                         <div className="flex h-2 rounded-full overflow-hidden bg-gray-100 mb-1">
                           <div className="bg-emerald-400" style={{ width: `${forPct}%` }} />
@@ -888,7 +952,7 @@ export default function GovernancePortal() {
                         <div className="flex justify-between text-xs text-gray-500">
                           <span>✅ For: {Number(formatUnits(proposal.forVotes, 18)).toLocaleString()}</span>
                           <span>❌ Against: {Number(formatUnits(proposal.againstVotes, 18)).toLocaleString()}</span>
-                          <span>⚪ Abstain: {Number(formatUnits(proposal.abstainVotes, 18)).toLocaleString()}</span>
+                          <span className="text-gray-400">{forPct > 0 || againstPct > 0 ? `${forPct}% For` : "ยังไม่มีผู้โหวต"}</span>
                         </div>
                       </div>
 
@@ -909,13 +973,6 @@ export default function GovernancePortal() {
                             >
                               ❌ Vote Against
                             </button>
-                            <button
-                              disabled={!!actionKey}
-                              onClick={() => void runAction(`vote-${proposal.id}`, () => castVote(proposal, 2))}
-                              className="flex-1 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
-                            >
-                              ⚪ Abstain
-                            </button>
                           </>
                         )}
                         {proposal.state === 1 && proposal.hasVoted && (
@@ -929,6 +986,25 @@ export default function GovernancePortal() {
                           >
                             {actionKey === `exec-${proposal.id}` ? "Executing..." : "⚡ Execute Proposal"}
                           </button>
+                        )}
+                        {/* Admin demo buttons — owner only */}
+                        {isOwner && (proposal.state === 0 || proposal.state === 1) && (
+                          <>
+                            <button
+                              disabled={!!actionKey}
+                              onClick={() => void runAction(`demo-exec-${proposal.id}`, () => demoExecuteProposal(proposal))}
+                              className="px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-40 whitespace-nowrap"
+                            >
+                              {actionKey === `demo-exec-${proposal.id}` ? "..." : "🚀 Demo: Pass"}
+                            </button>
+                            <button
+                              disabled={!!actionKey}
+                              onClick={() => void runAction(`demo-def-${proposal.id}`, () => demoDefeatProposal(proposal))}
+                              className="px-3 py-2 text-xs font-semibold rounded-lg bg-red-700 text-white hover:bg-red-800 disabled:opacity-40 whitespace-nowrap"
+                            >
+                              {actionKey === `demo-def-${proposal.id}` ? "..." : "⛔ Demo: Defeat"}
+                            </button>
+                          </>
                         )}
                         {explorerUrl && (
                           <a

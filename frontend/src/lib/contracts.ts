@@ -34,6 +34,8 @@ export const carbonMarketAbi = [
   "function minimumVerifierReputationToApprove() view returns (uint256)",
   "function hasVotedOnChallenge(uint256, address) view returns (bool)",
   "function reviewQuorum() view returns (uint256)",
+  "function governorContract() view returns (address)",
+  "function setGovernorContract(address gov)",
   "function setPlatformFeeBps(uint256 bps)",
   "function setChallengeDuration(uint256 durationSeconds)",
   "function setVoteThreshold(uint256 votes)",
@@ -78,6 +80,7 @@ export const governorAbi = [
   "function votingDelay() view returns (uint256)",
   "function votingPeriod() view returns (uint256)",
   "function proposalThreshold() view returns (uint256)",
+  "function proposalBond() view returns (uint256)",
   "function quorum(uint256 blockNumber) view returns (uint256)",
   "function state(uint256 proposalId) view returns (uint8)",
   "function proposalVotes(uint256 proposalId) view returns (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes)",
@@ -85,13 +88,20 @@ export const governorAbi = [
   "function proposalSnapshot(uint256 proposalId) view returns (uint256)",
   "function hasVoted(uint256 proposalId, address account) view returns (bool)",
   "function getVotes(address account, uint256 blockNumber) view returns (uint256)",
+  "function getProposalBond(uint256 proposalId) view returns (uint256)",
+  "function getProposalProposer(uint256 proposalId) view returns (address)",
+  "function owner() view returns (address)",
   "function propose(address[] targets, uint256[] values, bytes[] calldatas, string description) returns (uint256)",
   "function castVote(uint256 proposalId, uint8 support) returns (uint256)",
-  "function execute(address[] targets, uint256[] values, bytes[] calldatas, bytes32 descriptionHash) returns (uint256)",
+  "function execute(address[] targets, uint256[] values, bytes[] calldatas, bytes32 descriptionHash) payable returns (uint256)",
+  "function demoExecute(address[] targets, uint256[] values, bytes[] calldatas, bytes32 descriptionHash)",
+  "function demoDefeat(uint256 proposalId)",
   "function hashProposal(address[] targets, uint256[] values, bytes[] calldatas, bytes32 descriptionHash) view returns (uint256)",
   "event ProposalCreated(uint256 proposalId, address proposer, address[] targets, uint256[] values, string[] signatures, bytes[] calldatas, uint256 voteStart, uint256 voteEnd, string description)",
   "event VoteCast(address indexed voter, uint256 proposalId, uint8 support, uint256 weight, string reason)",
-  "event ProposalExecuted(uint256 indexed proposalId)"
+  "event ProposalExecuted(uint256 indexed proposalId)",
+  "event ProposalBondRefunded(uint256 indexed proposalId, address indexed proposer, uint256 amount)",
+  "event ProposalBondSlashed(uint256 indexed proposalId, address indexed proposer, uint256 amount)"
 ] as const;
 
 export const erc20Abi = [

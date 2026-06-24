@@ -66,6 +66,7 @@ contract CarbonMarket is Ownable, ERC1155Holder {
     uint256 public minimumVerifierReputationToApprove = 50;
     address public treasury;
     address public assessor;
+    address public governorContract;
 
     mapping(uint256 => Project) public projects;
     mapping(address => ReviewerProfile) public reviewers;
@@ -122,6 +123,11 @@ contract CarbonMarket is Ownable, ERC1155Holder {
         _;
     }
 
+    modifier onlyOwnerOrGovernor() {
+        if (msg.sender != owner() && msg.sender != governorContract) revert Unauthorized();
+        _;
+    }
+
     function setRetireCertificate(address retireCertAddress) external onlyOwner {
         retireCertificate = RetireCertificate(retireCertAddress);
     }
@@ -134,47 +140,51 @@ contract CarbonMarket is Ownable, ERC1155Holder {
         treasury = treasuryAddress;
     }
 
-    function setReviewerBond(uint256 amount) external onlyOwner {
+    function setGovernorContract(address gov) external onlyOwner {
+        governorContract = gov;
+    }
+
+    function setReviewerBond(uint256 amount) external onlyOwnerOrGovernor {
         if (amount == 0) revert InvalidConfig();
         reviewerBond = amount;
         emit ReviewerBondUpdated(amount);
     }
 
-    function setChallengeDuration(uint256 durationSeconds) external onlyOwner {
+    function setChallengeDuration(uint256 durationSeconds) external onlyOwnerOrGovernor {
         if (durationSeconds == 0) revert InvalidConfig();
         challengeDuration = durationSeconds;
         emit ChallengeDurationUpdated(durationSeconds);
     }
 
-    function setVoteThreshold(uint256 votes) external onlyOwner {
+    function setVoteThreshold(uint256 votes) external onlyOwnerOrGovernor {
         if (votes == 0) revert InvalidConfig();
         voteThreshold = votes;
         emit VoteThresholdUpdated(votes);
     }
 
-    function setChallengerPenaltyBps(uint256 bps) external onlyOwner {
+    function setChallengerPenaltyBps(uint256 bps) external onlyOwnerOrGovernor {
         if (bps > 10_000) revert InvalidConfig();
         challengerPenaltyBps = bps;
         emit ChallengerPenaltyBpsUpdated(bps);
     }
 
-    function setChallengerRewardReputation(uint256 points) external onlyOwner {
+    function setChallengerRewardReputation(uint256 points) external onlyOwnerOrGovernor {
         challengerRewardReputation = points;
         emit ChallengerRewardReputationUpdated(points);
     }
 
-    function setChallengerPenaltyReputation(uint256 points) external onlyOwner {
+    function setChallengerPenaltyReputation(uint256 points) external onlyOwnerOrGovernor {
         challengerPenaltyReputation = points;
         emit ChallengerPenaltyReputationUpdated(points);
     }
 
-    function setPlatformFeeBps(uint256 bps) external onlyOwner {
+    function setPlatformFeeBps(uint256 bps) external onlyOwnerOrGovernor {
         if (bps > 10_000) revert InvalidConfig();
         platformFeeBps = bps;
         emit PlatformFeeBpsUpdated(bps);
     }
 
-    function setMinimumVerifierReputationToApprove(uint256 points) external onlyOwner {
+    function setMinimumVerifierReputationToApprove(uint256 points) external onlyOwnerOrGovernor {
         minimumVerifierReputationToApprove = points;
         emit MinimumVerifierReputationUpdated(points);
     }
