@@ -168,6 +168,7 @@ export default function GovernancePortal() {
   const [cgovCooldownSec, setCgovCooldownSec] = useState(0n);
   const [cgovRate, setCgovRate] = useState(10_000n);
   const [ethBuyInput, setEthBuyInput] = useState("");
+  const [delegateTarget, setDelegateTarget] = useState("");
 
   const selectedOption = PROPOSAL_OPTIONS.find((option) => option.type === propType) ?? PROPOSAL_OPTIONS[0];
 
@@ -295,6 +296,18 @@ export default function GovernancePortal() {
     }
   }
 
+  async function addCGOVToMetaMask() {
+    const govTokenAddr = config.governanceTokenAddress;
+    if (!govTokenAddr || !window.ethereum) return;
+    await (window.ethereum as any).request({
+      method: "wallet_watchAsset",
+      params: {
+        type: "ERC20",
+        options: { address: govTokenAddr, symbol: "CGOV", decimals: 18 },
+      },
+    });
+  }
+
   async function claimCGOVFaucet() {
     if (!wallet) return;
     const signer = await wallet.provider.getSigner();
@@ -322,6 +335,15 @@ export default function GovernancePortal() {
     const tx = await govToken.delegate(wallet.account);
     await (tx as any).wait();
     setTxMsg("✅ Delegated voting power to yourself!");
+  }
+
+  async function delegateToAddress() {
+    if (!wallet || !delegateTarget) return;
+    const { govToken } = await getContracts(wallet.provider);
+    const tx = await govToken.delegate(delegateTarget);
+    await (tx as any).wait();
+    setTxMsg(`✅ มอบสิทธิ์โหวตให้ ${delegateTarget.slice(0, 8)}... แล้ว`);
+    setDelegateTarget("");
   }
 
   function buildCalldata(type: ProposalType, input: string): { targets: string[]; values: bigint[]; calldatas: string[] } {
@@ -434,18 +456,24 @@ export default function GovernancePortal() {
                   <p className="text-sm font-semibold text-purple-900 mb-1">🪙 รับฟรี (Faucet)</p>
                   <p className="text-xs text-purple-600 mb-3">{cgovFaucetAmount} CGOV ต่อครั้ง · cooldown 24 ชม.</p>
                   {cgovCooldownSec > 0n ? (
-                    <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
                       ⏳ รอ {Math.ceil(Number(cgovCooldownSec) / 3600)} ชม. อีก {Math.ceil((Number(cgovCooldownSec) % 3600) / 60)} นาที
                     </div>
                   ) : (
                     <button
                       disabled={!!actionKey}
                       onClick={() => void runAction("faucet", claimCGOVFaucet)}
-                      className="w-full py-2 rounded-xl bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 disabled:opacity-40 transition-colors"
+                      className="w-full py-2 rounded-xl bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 disabled:opacity-40 transition-colors mb-2"
                     >
-                      {actionKey === "faucet" ? "กำลังรับ..." : `🎁 รับ ${cgovFaucetAmount} CGOV ฟรี`}
+                      {actionKey === "faucet" ? "กำลังรับ..." : "🎁 รับ 500 CGOV ฟรี สำหรับทดสอบระบบ"}
                     </button>
                   )}
+                  <button
+                    onClick={() => void addCGOVToMetaMask()}
+                    className="w-full py-1.5 rounded-xl border border-purple-200 text-purple-700 text-xs font-semibold hover:bg-purple-50 transition-colors"
+                  >
+                    🦊 เพิ่ม CGOV ใน MetaMask
+                  </button>
                 </div>
 
                 {/* Buy with ETH */}
@@ -509,11 +537,30 @@ export default function GovernancePortal() {
                 <button
                   disabled={!!actionKey}
                   onClick={() => void runAction("delegate", delegateToSelf)}
-                  className="w-full py-2.5 rounded-xl bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 disabled:opacity-40 transition-colors"
+                  className="w-full py-2.5 rounded-xl bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 disabled:opacity-40 transition-colors mb-3"
                 >
                   {actionKey === "delegate" ? "Delegating..." : "🗳️ Delegate Votes to Myself"}
                 </button>
               )}
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                <p className="text-xs font-semibold text-gray-600 mb-2">🤝 มอบสิทธิ์โหวตให้คนอื่น</p>
+                <p className="text-xs text-gray-400 mb-2">กรอก wallet address ของผู้ที่จะรับสิทธิ์โหวตแทนคุณ</p>
+                <div className="flex gap-2">
+                  <input
+                    value={delegateTarget}
+                    onChange={(e) => setDelegateTarget(e.target.value)}
+                    placeholder="0x..."
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white"
+                  />
+                  <button
+                    disabled={!!actionKey || !delegateTarget || !/^0x[a-fA-F0-9]{40}$/.test(delegateTarget)}
+                    onClick={() => void runAction("delegateTo", delegateToAddress)}
+                    className="px-3 py-1.5 rounded-lg bg-gray-700 text-white text-xs font-semibold hover:bg-gray-800 disabled:opacity-40 transition-colors whitespace-nowrap"
+                  >
+                    {actionKey === "delegateTo" ? "..." : "มอบสิทธิ์"}
+                  </button>
+                </div>
+              </div>
               {selfDelegated && !hasVotingPower && (
                 <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
                   <p className="font-semibold">⚠️ Delegated แล้วแต่ยังไม่มี CGOV tokens</p>
