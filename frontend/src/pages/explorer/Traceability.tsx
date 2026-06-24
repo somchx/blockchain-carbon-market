@@ -163,14 +163,14 @@ function getRowStatusLabel(row: ExplorerRow) {
   if (row.onChainProject) {
     return PROJECT_STATUS[row.onChainProject.status] ?? "Unknown";
   }
-  return "Assessed";
+  return "Pending";
 }
 
 function getRowStatusClass(row: ExplorerRow) {
   if (row.onChainProject) {
     return statusPill(row.onChainProject.status);
   }
-  return "bg-blue-100 text-blue-700";
+  return "bg-gray-100 text-gray-500";
 }
 
 function matchRow(row: ExplorerRow, query: string) {
@@ -535,8 +535,8 @@ export default function TraceabilityExplorer() {
                       <h3 className="text-base font-bold text-gray-900">
                         {detail.onChainProject ? `Project #${detail.onChainProject.id}` : detail.backendProject.id}
                       </h3>
-                      <span className={`px-3 py-1 text-xs font-semibold rounded-full ${detail.onChainProject ? statusPill(detail.onChainProject.status) : "bg-blue-100 text-blue-700"}`}>
-                        {detail.onChainProject ? (PROJECT_STATUS[detail.onChainProject.status] ?? "Unknown") : "Assessed"}
+                      <span className={`px-3 py-1 text-xs font-semibold rounded-full ${detail.onChainProject ? statusPill(detail.onChainProject.status) : "bg-gray-100 text-gray-500"}`}>
+                        {detail.onChainProject ? (PROJECT_STATUS[detail.onChainProject.status] ?? "Unknown") : "Pending"}
                       </span>
                     </div>
 
