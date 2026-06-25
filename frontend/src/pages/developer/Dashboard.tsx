@@ -455,11 +455,12 @@ export default function DeveloperDashboard() {
                       value={form.projectType}
                       onChange={(e) => setForm({ ...form, projectType: e.target.value as ProjectType })}
                     >
-                      <option value="forest">🌳 Forest</option>
-                      <option value="mangrove">🌿 Mangrove</option>
-                      <option value="solar">☀️ Solar</option>
-                      <option value="biogas">⚡ Biogas</option>
+                      <option value="forest">🌳 Forest (3.5 tCO2/ไร่/ปี)</option>
+                      <option value="mangrove">🌿 Mangrove (6.0 tCO2/ไร่/ปี)</option>
+                      <option value="solar">☀️ Solar (8.0 tCO2/ไร่/ปี)</option>
+                      <option value="biogas">⚡ Biogas (5.0 tCO2/ไร่/ปี)</option>
                     </select>
+                    <p className="mt-1 text-xs text-gray-400">อัตราอ้างอิงจาก Thailand Greenhouse Gas Management Organization (TGO)</p>
                   </div>
                 </div>
 
@@ -578,13 +579,27 @@ export default function DeveloperDashboard() {
                 </ol>
               </div>
 
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
-                <h3 className="text-sm font-semibold text-amber-800 mb-2">⚠️ กลไก Staking</h3>
-                <p className="text-xs text-amber-700 leading-5">
-                  การวาง Stake ด้วย TCUT เป็นกลไกค้ำประกัน — หาก Verifier หรือ Challenger พิสูจน์ได้ว่าข้อมูลไม่ถูกต้อง Stake อาจถูก Slash (ยึด) บางส่วนหรือทั้งหมด
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
+                <h3 className="text-sm font-semibold text-blue-800 mb-2">📍 ทำไมต้องระบุพิกัด GPS?</h3>
+                <p className="text-xs text-blue-700 leading-5">
+                  การระบุ Latitude / Longitude มีผลโดยตรงต่อ <strong>Confidence Score</strong> และ <strong>Risk Score</strong> ของโครงการ เพราะระบบจะใช้พิกัดนี้ดึงข้อมูลจากแหล่งภายนอก 3 แหล่ง:
                 </p>
-                <p className="text-xs text-amber-600 leading-5 mt-2">
-                  Stake ที่ต้องการขึ้นอยู่กับ Risk Score — ยิ่ง risk สูง ยิ่งต้อง stake มากขึ้น
+                <ul className="mt-2.5 space-y-2">
+                  <li className="flex gap-2 items-start text-xs text-blue-700">
+                    <span className="shrink-0">🛰️</span>
+                    <span><strong>ภาพถ่ายดาวเทียม</strong> — NASA MODIS ตรวจสอบประเภทพืชพรรณ (NDVI) และการใช้ที่ดินจริงว่าตรงกับที่ระบุหรือไม่</span>
+                  </li>
+                  <li className="flex gap-2 items-start text-xs text-blue-700">
+                    <span className="shrink-0">🌡️</span>
+                    <span><strong>ข้อมูลภูมิอากาศย้อนหลัง</strong> — NASA POWER API ให้ค่าแสงอาทิตย์และปริมาณฝนเฉลี่ยของพื้นที่</span>
+                  </li>
+                  <li className="flex gap-2 items-start text-xs text-blue-700">
+                    <span className="shrink-0">🌤️</span>
+                    <span><strong>สภาพอากาศ ณ วันที่ยื่น</strong> — OpenWeatherMap ดึงอุณหภูมิ ความชื้น และเมฆปกคลุมแบบ real-time</span>
+                  </li>
+                </ul>
+                <p className="mt-2.5 text-xs text-blue-600 leading-5">
+                  หากไม่ระบุพิกัด ระบบจะใช้ค่าตำแหน่งกลางของจังหวัดแทน ซึ่งอาจทำให้ผลการประเมินคลาดเคลื่อนได้
                 </p>
               </div>
             </div>

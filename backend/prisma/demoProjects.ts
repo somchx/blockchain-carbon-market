@@ -37,19 +37,6 @@ export const DEMO_SEED_PROJECTS: DemoSeedProject[] = [
     },
   },
   {
-    id: "SEED-3",
-    input: {
-      sellerName: "สมชาย รักษ์โลก",
-      projectName: "โครงการไบโอแก๊ส ฟาร์มพิษณุโลก",
-      province: "Phitsanulok",
-      landAreaRai: 88,
-      projectType: "biogas",
-      requestedCredits: 260,
-      selfReportedReduction: 240,
-      vintageYear: 2024,
-    },
-  },
-  {
     id: "SEED-MARKET-1",
     marketplaceReady: true,
     input: {
@@ -63,7 +50,24 @@ export const DEMO_SEED_PROJECTS: DemoSeedProject[] = [
       vintageYear: 2025,
     },
   },
+  {
+    id: "SEED-SLASHED-1",
+    slashed: true,
+    input: {
+      sellerName: "สมชาย รักษ์โลก",
+      projectName: "โครงการที่ถูก Slash แม่ฮ่องสอน",
+      province: "MaeHongSon",
+      landAreaRai: 120,
+      projectType: "forest",
+      requestedCredits: 280,
+      selfReportedReduction: 260,
+      vintageYear: 2024,
+    },
+  },
 ];
 
 export const DEMO_MARKETPLACE_PROJECT =
   DEMO_SEED_PROJECTS.find((project) => project.marketplaceReady) ?? DEMO_SEED_PROJECTS[DEMO_SEED_PROJECTS.length - 1];
+
+export const DEMO_SLASHED_PROJECT =
+  DEMO_SEED_PROJECTS.find((project) => project.slashed);
