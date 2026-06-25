@@ -796,12 +796,13 @@ export default function DeveloperDashboard() {
                     </div>
                   )}
 
-                  {/* Evidence Upload — ซ่อนระหว่างรอ Verifier */}
+                  {/* Evidence Upload — ซ่อนระหว่างรอ Verifier; read-only เมื่อ Minted หรือ Slashed */}
                   {!(onChainId && onChain?.status === 0) && (
                     <div className="border border-gray-100 rounded-xl p-4 mb-2">
                       <EvidenceUpload
                         projectId={project.id}
                         projectName={project.input.projectName}
+                        readOnly={onChain?.status === 3 || onChain?.status === 5}
                       />
                     </div>
                   )}

@@ -6,6 +6,7 @@ export type DemoSeedProject = {
   id: string;
   input: ProjectInput;
   marketplaceReady?: boolean;
+  slashed?: boolean;
 };
 
 export const DEMO_SEED_PROJECTS: DemoSeedProject[] = [

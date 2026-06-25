@@ -4,6 +4,7 @@ import type { EvidenceFile } from "../types";
 type Props = {
   projectId: string;
   projectName: string;
+  readOnly?: boolean;
 };
 
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000/api";
@@ -23,7 +24,7 @@ function fileIcon(mimeType: string) {
   return "📎";
 }
 
-export default function EvidenceUpload({ projectId, projectName }: Props) {
+export default function EvidenceUpload({ projectId, projectName, readOnly = false }: Props) {
   const [files, setFiles] = useState<EvidenceFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -98,39 +99,41 @@ export default function EvidenceUpload({ projectId, projectName }: Props) {
         <span className="text-xs text-gray-400">{ALLOWED_LABEL}</span>
       </div>
 
-      {/* Drop zone */}
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={onDrop}
-        onClick={() => inputRef.current?.click()}
-        className={`
-          border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors
-          ${dragOver ? "border-emerald-400 bg-emerald-50" : "border-gray-300 hover:border-emerald-400 hover:bg-gray-50"}
-          ${uploading ? "pointer-events-none opacity-60" : ""}
-        `}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png,.webp"
-          className="hidden"
-          onChange={onFileInput}
-        />
-        {uploading ? (
-          <div className="flex flex-col items-center gap-2 text-emerald-600">
-            <div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm font-medium">กำลังอัปโหลดไป IPFS...</p>
-          </div>
-        ) : (
-          <>
-            <p className="text-3xl mb-2">📤</p>
-            <p className="text-sm font-medium text-gray-700">ลากไฟล์มาวางที่นี่ หรือคลิกเพื่อเลือก</p>
-            <p className="text-xs text-gray-400 mt-1">{ALLOWED_LABEL}</p>
-            <p className="text-xs text-emerald-600 mt-1 font-medium">ไฟล์จะถูกอัปโหลดไป IPFS ผ่าน Pinata</p>
-          </>
-        )}
-      </div>
+      {/* Drop zone — hidden in read-only mode (Minted / Slashed) */}
+      {!readOnly && (
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
+          onClick={() => inputRef.current?.click()}
+          className={`
+            border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors
+            ${dragOver ? "border-emerald-400 bg-emerald-50" : "border-gray-300 hover:border-emerald-400 hover:bg-gray-50"}
+            ${uploading ? "pointer-events-none opacity-60" : ""}
+          `}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
+            className="hidden"
+            onChange={onFileInput}
+          />
+          {uploading ? (
+            <div className="flex flex-col items-center gap-2 text-emerald-600">
+              <div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm font-medium">กำลังอัปโหลดไป IPFS...</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-3xl mb-2">📤</p>
+              <p className="text-sm font-medium text-gray-700">ลากไฟล์มาวางที่นี่ หรือคลิกเพื่อเลือก</p>
+              <p className="text-xs text-gray-400 mt-1">{ALLOWED_LABEL}</p>
+              <p className="text-xs text-emerald-600 mt-1 font-medium">ไฟล์จะถูกอัปโหลดไป IPFS ผ่าน Pinata</p>
+            </>
+          )}
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">
@@ -174,7 +177,7 @@ export default function EvidenceUpload({ projectId, projectName }: Props) {
 
       {files.length === 0 && !uploading && (
         <p className="text-xs text-gray-400 text-center">
-          ยังไม่มีหลักฐาน — อัปโหลดเอกสารโครงการ, รูปภาพ หรือใบรับรอง
+          {readOnly ? "ไม่มีหลักฐานแนบ" : "ยังไม่มีหลักฐาน — อัปโหลดเอกสารโครงการ, รูปภาพ หรือใบรับรอง"}
         </p>
       )}
     </div>
